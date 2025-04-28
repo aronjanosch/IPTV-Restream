@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Channel } from '../types';
-import socketService from '../services/SocketService';
-import { Lock } from 'lucide-react';
+import React, { useState } from "react";
+import { Channel } from "../types";
+import socketService from "../services/SocketService";
+import { Lock } from "lucide-react";
 
 interface ChannelListProps {
   channels: Channel[];
@@ -12,18 +12,17 @@ interface ChannelListProps {
   isAdminEnabled?: boolean;
 }
 
-function ChannelList({ 
-  channels, 
-  selectedChannel, 
-  setSearchQuery, 
+function ChannelList({
+  channels,
+  selectedChannel,
+  setSearchQuery,
   onEditChannel,
   isAdmin = false,
-  isAdminEnabled = false
+  isAdminEnabled = false,
 }: ChannelListProps) {
-
   const onSelectChannel = (channel: Channel) => {
-    setSearchQuery('');
-    if(channel.id === selectedChannel?.id) return;
+    setSearchQuery("");
+    if (channel.id === selectedChannel?.id) return;
     socketService.setCurrentChannel(channel.id);
   };
 
@@ -37,13 +36,13 @@ function ChannelList({
       {channels.map((channel) => (
         <button
           key={channel.id}
-          title={channel.name.length > 28 ? channel.name : ''}
+          title={channel.name.length > 28 ? channel.name : ""}
           onClick={() => onSelectChannel(channel)}
           onContextMenu={(event) => onRightClickChannel(event, channel)}
           className={`group relative p-2 rounded-lg transition-all ${
             selectedChannel?.id === channel.id
-              ? 'bg-blue-500 bg-opacity-20 ring-2 ring-blue-500'
-              : 'hover:bg-gray-700'
+              ? "bg-blue-500 bg-opacity-20 ring-2 ring-blue-500"
+              : "hover:bg-gray-700"
           }`}
         >
           <div className="h-20 w-20 mb-2 flex items-center justify-center rounded-lg mx-auto">
@@ -52,11 +51,11 @@ function ChannelList({
               alt={channel.name}
               className="w-full h-full object-contain rounded-lg transition-transform group-hover:scale-105"
             />
-              </div>
-            )}
           </div>
           <p className="text-sm font-medium truncate text-center">
-            {channel.name.length > 28 ? `${channel.name.substring(0, 28)}...` : channel.name}
+            {channel.name.length > 28
+              ? `${channel.name.substring(0, 28)}...`
+              : channel.name}
           </p>
         </button>
       ))}
