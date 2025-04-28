@@ -1,15 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Channel } from '../types';
 import socketService from '../services/SocketService';
+import { Lock } from 'lucide-react';
 
 interface ChannelListProps {
   channels: Channel[];
   selectedChannel: Channel | null;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
   onEditChannel: (channel: Channel) => void;
+  isAdmin?: boolean;
+  isAdminEnabled?: boolean;
 }
 
-function ChannelList({ channels, selectedChannel, setSearchQuery, onEditChannel }: ChannelListProps) {
+function ChannelList({ 
+  channels, 
+  selectedChannel, 
+  setSearchQuery, 
+  onEditChannel,
+  isAdmin = false,
+  isAdminEnabled = false
+}: ChannelListProps) {
 
   const onSelectChannel = (channel: Channel) => {
     setSearchQuery('');
@@ -42,6 +52,8 @@ function ChannelList({ channels, selectedChannel, setSearchQuery, onEditChannel 
               alt={channel.name}
               className="w-full h-full object-contain rounded-lg transition-transform group-hover:scale-105"
             />
+              </div>
+            )}
           </div>
           <p className="text-sm font-medium truncate text-center">
             {channel.name.length > 28 ? `${channel.name.substring(0, 28)}...` : channel.name}

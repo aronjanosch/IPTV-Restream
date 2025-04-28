@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Eye, EyeOff } from 'lucide-react';
 import socketService from '../../services/SocketService';
 import { CustomHeader, Channel, ChannelMode } from '../../types';
 import CustomHeaderInput from './CustomHeaderInput';
@@ -9,12 +9,14 @@ import { ModeTooltipContent, Tooltip } from '../Tooltip';
 interface ChannelModalProps {
   onClose: () => void;
   channel?: Channel | null;
+  isAdmin?: boolean;
 }
 
-function ChannelModal({ onClose, channel }: ChannelModalProps) {
+function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) {
   const [type, setType] = useState<'channel' | 'playlist'>('playlist');
   const [isEditMode, setIsEditMode] = useState(false);
   const [inputMethod, setInputMethod] = useState<'url' | 'text'>('url');
+  const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
 
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -100,7 +102,8 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
         url.trim(),
         avatar.trim() || 'https://via.placeholder.com/64',
         mode,
-        JSON.stringify(headers)
+        JSON.stringify(headers),
+        isAdmin
       );
     } else if (type === 'playlist') {
       if (inputMethod === 'url' && !playlistUrl.trim()) return;
@@ -111,7 +114,8 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
         playlistName.trim(),
         mode,
         playlistUpdate,
-        JSON.stringify(headers)
+        JSON.stringify(headers),
+        isAdmin
       );
     }
 
@@ -132,7 +136,7 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
         avatar: avatar.trim() || 'https://via.placeholder.com/64',
         mode: mode,
         headers: headers,
-      });
+      }, isAdmin);
     } else if (type === 'playlist') {
       const newPlaylist = inputMethod === 'url' ? playlistUrl.trim() : playlistText.trim();
       socketService.updatePlaylist(channel!.playlist, {
@@ -141,7 +145,7 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
         playlistUpdate: playlistUpdate,
         mode: mode,
         headers: headers,
-      });
+      }, isAdmin);
     }
 
     addToast({
@@ -156,9 +160,9 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
   const handleDelete = () => {
     if (channel) {
       if (type === 'channel') {
-        socketService.deleteChannel(channel.id);
+        socketService.deleteChannel(channel.id, isAdmin);
       } else if (type === 'playlist') {
-        socketService.deletePlaylist(channel.playlist);
+        socketService.deletePlaylist(channel.playlist, isAdmin);
       }
     }
     addToast({
@@ -167,6 +171,32 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
       duration: 3000,
     });
     onClose();
+  };
+
+  // Obfuscate part of the URL to hide sensitive information
+  const getObfuscatedUrl = (fullUrl: string) => {
+    if (!fullUrl || showSensitiveInfo) return fullUrl;
+    
+    try {
+      const url = new URL(fullUrl);
+      // Hide username and password in URL if present
+      if (url.username || url.password) {
+        return fullUrl.replace(/\/\/([^:@]+:[^@]+@)/g, '//***:***@');
+      }
+      
+      // Hide tokens or API keys in query params
+      if (url.search && (url.search.includes('token') || url.search.includes('key') || url.search.includes('password') || url.search.includes('auth'))) {
+        return `${url.origin}${url.pathname}?***hidden***`;
+      }
+      
+      return fullUrl;
+    } catch {
+      // If URL is malformed, just return a partially obfuscated string
+      if (fullUrl.length > 20) {
+        return fullUrl.substring(0, 10) + '...' + fullUrl.substring(fullUrl.length - 10);
+      }
+      return fullUrl;
+    }
   };
 
   return (
@@ -221,17 +251,30 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
                 />
               </div>
               <div>
-                <label htmlFor="url" className="block text-sm font-medium mb-1">
-                  Stream URL
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label htmlFor="url" className="block text-sm font-medium">
+                    Stream URL
+                  </label>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                      className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                      {showSensitiveInfo ? 'Hide' : 'Show'} URL
+                    </button>
+                  )}
+                </div>
                 <input
                   type="url"
                   id="url"
-                  value={url}
+                  value={isAdmin ? url : getObfuscatedUrl(url)}
                   onChange={(e) => setUrl(e.target.value)}
                   className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter stream URL"
                   required
+                  readOnly={!isAdmin && !showSensitiveInfo}
                 />
               </div>
               <div>
@@ -330,15 +373,26 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
                         M3U Text
                       </button>
                     </label>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                        className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                        {showSensitiveInfo ? 'Hide' : 'Show'} URL
+                      </button>
+                    )}
                   </div>
                   <input
                     type="url"
                     id="playlistUrl"
-                    value={playlistUrl}
+                    value={isAdmin ? playlistUrl : getObfuscatedUrl(playlistUrl)}
                     onChange={(e) => setPlaylistUrl(e.target.value)}
                     className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter M3U playlist URL"
                     required={inputMethod === 'url'}
+                    readOnly={!isAdmin && !showSensitiveInfo}
                   />
                 </div>
               ) : (
@@ -361,15 +415,26 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
                         M3U Text
                       </button>
                     </label>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                        className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                        {showSensitiveInfo ? 'Hide' : 'Show'} content
+                      </button>
+                    )}
                   </div>
                   <textarea
                     id="playlistText"
-                    value={playlistText}
+                    value={isAdmin || showSensitiveInfo ? playlistText : "#EXTM3U\n# Content hidden for privacy\n# Login as admin to view or edit"}
                     onChange={(e) => setPlaylistText(e.target.value)}
                     className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px] scroll-container overflow-y-auto"
                     placeholder="#EXTM3U..."
                     required={inputMethod === 'text'}
                     style={{ resize: 'none' }}
+                    readOnly={!isAdmin && !showSensitiveInfo}
                   />
                 </div>
               )}
@@ -443,30 +508,38 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
                 <label className="block text-sm font-medium">
                   Custom Headers
                 </label>
-                <button
-                  type="button"
-                  onClick={addHeader}
-                  className="flex items-center space-x-1 text-sm text-blue-400 hover:text-blue-300"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Header</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={addHeader}
+                    className="flex items-center space-x-1 text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Header</span>
+                  </button>
+                )}
               </div>
               <div className="space-y-2">
                 {headers && headers.map((header, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <CustomHeaderInput
-                      header={header}
+                      header={{
+                        key: header.key,
+                        value: isAdmin || showSensitiveInfo ? header.value : "***hidden***"
+                      }}
                       onKeyChange={(value) => updateHeader(index, 'key', value)}
                       onValueChange={(value) => updateHeader(index, 'value', value)}
+                      readOnly={!isAdmin && !showSensitiveInfo}
                     />
-                    <button
-                      type="button"
-                      onClick={() => removeHeader(index)}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => removeHeader(index)}
+                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -474,7 +547,7 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
           )}
 
           <div className="flex justify-end space-x-3">
-            {isEditMode && (
+            {isEditMode && isAdmin && (
               <button
                 type="button"
                 onClick={handleDelete}
@@ -490,12 +563,14 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              {isEditMode ? 'Update' : 'Add'}
-            </button>
+            {isAdmin && (
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {isEditMode ? 'Update' : 'Add'}
+              </button>
+            )}
           </div>
         </form>
       </div>

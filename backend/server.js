@@ -8,6 +8,7 @@ const ChannelSocketHandler = require('./socket/ChannelSocketHandler');
 const proxyController = require('./controllers/ProxyController');
 const centralChannelController = require('./controllers/CentralChannelController');
 const channelController = require('./controllers/ChannelController');
+const authController = require('./controllers/AuthController');
 const streamController = require('./services/restream/StreamController');
 const ChannelService = require('./services/ChannelService');
 const PlaylistSocketHandler = require('./socket/PlaylistSocketHandler');
@@ -18,6 +19,24 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+// CORS middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Auth routes
+const authRouter = express.Router();
+authRouter.post('/admin-login', authController.adminLogin);
+authRouter.get('/admin-status', authController.checkAdminStatus);
+app.use('/api/auth', authRouter);
+
+// Channel routes
 const apiRouter = express.Router();
 apiRouter.get('/', channelController.getChannels);
 apiRouter.get('/current', channelController.getCurrentChannel);

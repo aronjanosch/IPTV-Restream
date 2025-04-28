@@ -1,15 +1,17 @@
-import { X, Copy, Tv2 } from 'lucide-react';
-import { useContext } from 'react';
+import { X, Copy, Tv2, Eye, EyeOff } from 'lucide-react';
+import { useContext, useState } from 'react';
 import { ToastContext } from './notifications/ToastContext';
 
 interface TvPlaylistModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
-function TvPlaylistModal({ isOpen, onClose }: TvPlaylistModalProps) {
+function TvPlaylistModal({ isOpen, onClose, isAdmin = false }: TvPlaylistModalProps) {
   const { addToast } = useContext(ToastContext);
   const playlistUrl = `${import.meta.env.VITE_BACKEND_URL || window.location.origin}/api/channels/playlist`;
+  const [showHiddenInfo, setShowHiddenInfo] = useState(false);
 
   if (!isOpen) return null;
 
@@ -66,6 +68,35 @@ function TvPlaylistModal({ isOpen, onClose }: TvPlaylistModalProps) {
           <p className="text-sm text-gray-400">
             Use this playlist in any other IPTV player. If you have problems, check if the base-url in the playlist is correctly pointing to the backend. If not, please set BACKEND_URL in the docker-compose.yml
           </p>
+
+          {isAdmin && (
+            <div className="mt-6 border-t border-gray-700 pt-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-medium">Admin Information</h3>
+                <button 
+                  onClick={() => setShowHiddenInfo(!showHiddenInfo)}
+                  className="flex items-center space-x-1 text-blue-400 hover:text-blue-300"
+                >
+                  {showHiddenInfo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>{showHiddenInfo ? 'Hide' : 'Show'} sensitive info</span>
+                </button>
+              </div>
+              
+              <div className="bg-gray-900 rounded-lg p-4">
+                <p className="text-sm text-gray-300">
+                  {showHiddenInfo ? (
+                    <>
+                      This playlist contains the actual stream URLs. You can share a link to the 
+                      application with non-admin users, and they will be able to watch the streams 
+                      without seeing the actual stream URLs.
+                    </>
+                  ) : (
+                    'Click "Show sensitive info" to view additional information about the playlist.'
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
