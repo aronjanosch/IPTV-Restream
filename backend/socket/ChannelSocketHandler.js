@@ -5,10 +5,10 @@ const ADMIN_ENABLED = process.env.ADMIN_ENABLED === 'true';
 
 module.exports = (io, socket) => {
     // Check if admin mode is required for channel modifications
-    socket.on('add-channel', ({ name, url, avatar, mode, headersJson, isAdmin }) => {
+    socket.on('add-channel', ({ name, url, avatar, mode, headersJson }) => {
         try {
-            // If admin mode is enabled but user is not admin, reject the operation
-            if (ADMIN_ENABLED && !isAdmin) {
+            // Check if user is authenticated as admin from the socket middleware
+            if (ADMIN_ENABLED && !socket.user?.isAdmin) {
                 return socket.emit('app-error', { message: 'Admin access required to add channels' });
             }
 
@@ -30,14 +30,10 @@ module.exports = (io, socket) => {
         }
     });
 
-    socket.on('delete-channel', async (data) => {
+    socket.on('delete-channel', async (id) => {
         try {
-            // Parse input to handle both old format (just id) and new format with admin flag
-            const id = typeof data === 'object' ? data.id : data;
-            const isAdmin = typeof data === 'object' ? data.isAdmin : false;
-
-            // If admin mode is enabled but user is not admin, reject the operation
-            if (ADMIN_ENABLED && !isAdmin) {
+            // Check if user is authenticated as admin from the socket middleware
+            if (ADMIN_ENABLED && !socket.user?.isAdmin) {
                 return socket.emit('app-error', { message: 'Admin access required to delete channels' });
             }
 
@@ -51,10 +47,10 @@ module.exports = (io, socket) => {
         }
     });
 
-    socket.on('update-channel', async ({ id, updatedAttributes, isAdmin }) => {
+    socket.on('update-channel', async ({ id, updatedAttributes }) => {
         try {
-            // If admin mode is enabled but user is not admin, reject the operation
-            if (ADMIN_ENABLED && !isAdmin) {
+            // Check if user is authenticated as admin from the socket middleware
+            if (ADMIN_ENABLED && !socket.user?.isAdmin) {
                 return socket.emit('app-error', { message: 'Admin access required to update channels' });
             }
 

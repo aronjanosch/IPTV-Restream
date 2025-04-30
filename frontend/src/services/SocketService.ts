@@ -3,16 +3,21 @@ import { ChannelMode } from '../types';
 
 class SocketService {
   private socket: Socket | null = null;
-
   private listeners: Map<string, ((data: any) => void)[]> = new Map();
 
-  // Initialize
+  // Initialize connection with JWT token if available
   connect() {
     if (this.socket?.connected) return;
 
-    console.log('Connecting to WebSocket server: ');
-    // Default Behavior: If 'VITE_BACKEND_URL' is not set, the app will use the same host name as the frontend
-    this.socket = io(import.meta.env.VITE_BACKEND_URL);
+    console.log('Connecting to WebSocket server');
+    
+    // Get JWT token from localStorage if available
+    const token = localStorage.getItem('admin_token');
+    
+    // Connect with auth token if available
+    this.socket = io(import.meta.env.VITE_BACKEND_URL, {
+      auth: token ? { token } : undefined,
+    });
 
     this.socket.on('connect', () => {
       console.log('Connected to WebSocket server');
@@ -25,7 +30,6 @@ class SocketService {
     this.socket.on('app-error', (error) => {
       console.error('Failed:', error);
     });
-
 
     // Listen for incoming custom events
     this.socket.onAny((event: string, data: any) => {
@@ -61,7 +65,6 @@ class SocketService {
     }
   }
 
-
   // Send chat message
   sendMessage(userName: string, userAvatar: string, message: string, timestamp: string) {
     if (!this.socket) throw new Error('Socket is not connected.');
@@ -70,10 +73,10 @@ class SocketService {
   }
 
   // Add channel
-  addChannel(name: string, url: string, avatar: string, mode: ChannelMode, headersJson: string, isAdmin: boolean = false) {
+  addChannel(name: string, url: string, avatar: string, mode: ChannelMode, headersJson: string) {
     if (!this.socket) throw new Error('Socket is not connected.');
 
-    this.socket.emit('add-channel', { name, url, avatar, mode, headersJson, isAdmin });
+    this.socket.emit('add-channel', { name, url, avatar, mode, headersJson });
   }
 
   // Set current channel
@@ -84,40 +87,47 @@ class SocketService {
   }
 
   // Delete channel
-  deleteChannel(id: number, isAdmin: boolean = false) {
+  deleteChannel(id: number) {
     if (!this.socket) throw new Error('Socket is not connected.');
 
-    this.socket.emit('delete-channel', { id, isAdmin });
+    this.socket.emit('delete-channel', id);
   }
 
   // Update channel
-  updateChannel(id: number, updatedAttributes: any, isAdmin: boolean = false) {
+  updateChannel(id: number, updatedAttributes: any) {
     if (!this.socket) throw new Error('Socket is not connected.');
 
-    this.socket.emit('update-channel', { id, updatedAttributes, isAdmin });
+    this.socket.emit('update-channel', { id, updatedAttributes });
   }
 
   // Add playlist
-  addPlaylist(playlist: string, playlistName: string, mode: ChannelMode, playlistUpdate: boolean, headers: string, isAdmin: boolean = false) {
+  addPlaylist(playlist: string, playlistName: string, mode: ChannelMode, playlistUpdate: boolean, headers: string) {
     if (!this.socket) throw new Error('Socket is not connected.');
 
-    this.socket.emit('add-playlist', { playlist, playlistName, mode, playlistUpdate, headers, isAdmin });
+    this.socket.emit('add-playlist', { playlist, playlistName, mode, playlistUpdate, headers });
   }
 
   // Update playlist
-  updatePlaylist(playlist: string, updatedAttributes: any, isAdmin: boolean = false) {
+  updatePlaylist(playlist: string, updatedAttributes: any) {
     if (!this.socket) throw new Error('Socket is not connected.');
 
-    this.socket.emit('update-playlist', { playlist, updatedAttributes, isAdmin });
+    this.socket.emit('update-playlist', { playlist, updatedAttributes });
   }
 
-  // Delete playlist 
-  deletePlaylist(playlist: string, isAdmin: boolean = false) {
+  // Delete playlist
+  deletePlaylist(playlist: string) {
     if (!this.socket) throw new Error('Socket is not connected.');
 
-    this.socket.emit('delete-playlist', { playlist, isAdmin });
+    this.socket.emit('delete-playlist', playlist);
   }
 
+  // Reconnect with new token when admin status changes
+  updateAuthToken() {
+    // Disconnect current socket if connected
+    this.disconnect();
+    // Reconnect with new token
+    this.connect();
+  }
 }
 
 const socketService = new SocketService();

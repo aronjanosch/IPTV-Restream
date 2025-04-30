@@ -1,9 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const { Server } = require('socket.io');
+const cookieParser = require('cookie-parser');
 
 const ChatSocketHandler = require('./socket/ChatSocketHandler');
 const ChannelSocketHandler = require('./socket/ChannelSocketHandler');
+const PlaylistSocketHandler = require('./socket/PlaylistSocketHandler');
+const socketAuthMiddleware = require('./socket/middleware/jwt');
 
 const proxyController = require('./controllers/ProxyController');
 const centralChannelController = require('./controllers/CentralChannelController');
@@ -11,18 +14,18 @@ const channelController = require('./controllers/ChannelController');
 const authController = require('./controllers/AuthController');
 const streamController = require('./services/restream/StreamController');
 const ChannelService = require('./services/ChannelService');
-const PlaylistSocketHandler = require('./socket/PlaylistSocketHandler');
 const PlaylistUpdater = require('./services/PlaylistUpdater');
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // CORS middleware
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -34,18 +37,20 @@ app.use((req, res, next) => {
 const authRouter = express.Router();
 authRouter.post('/admin-login', authController.adminLogin);
 authRouter.get('/admin-status', authController.checkAdminStatus);
+
 app.use('/api/auth', authRouter);
 
 // Channel routes
 const apiRouter = express.Router();
 apiRouter.get('/', channelController.getChannels);
 apiRouter.get('/current', channelController.getCurrentChannel);
-apiRouter.delete('/clear', channelController.clearChannels);
+apiRouter.delete('/clear', authController.verifyToken, channelController.clearChannels);
 apiRouter.get('/playlist', centralChannelController.playlist);
 apiRouter.get('/:channelId', channelController.getChannel);
-apiRouter.delete('/:channelId', channelController.deleteChannel);
-apiRouter.put('/:channelId', channelController.updateChannel);
-apiRouter.post('/', channelController.addChannel);
+// Protected routes
+apiRouter.delete('/:channelId', authController.verifyToken, channelController.deleteChannel);
+apiRouter.put('/:channelId', authController.verifyToken, channelController.updateChannel);
+apiRouter.post('/', authController.verifyToken, channelController.addChannel);
 app.use('/api/channels', apiRouter);
 
 const proxyRouter = express.Router();
@@ -70,6 +75,9 @@ const server = app.listen(PORT, async () => {
 // Web Sockets
 const io = new Server(server);
 
+// Add JWT authentication middleware to socket.io
+io.use(socketAuthMiddleware);
+
 const connectedUsers = {};
 
 io.on('connection', socket => {
@@ -87,6 +95,5 @@ io.on('connection', socket => {
 
   ChannelSocketHandler(io, socket);
   PlaylistSocketHandler(io, socket);
-
   ChatSocketHandler(io, socket);
 })

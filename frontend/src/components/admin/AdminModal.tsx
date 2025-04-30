@@ -20,11 +20,14 @@ function AdminModal({ isOpen, onClose }: AdminModalProps) {
     e.preventDefault();
     
     try {
-      const response = await apiService.request<{success: boolean}>('/auth/admin-login', 'POST', undefined, {
+      const response = await apiService.request<{success: boolean, token?: string}>('/auth/admin-login', 'POST', undefined, {
         password
       });
       
-      if (response.success) {
+      if (response.success && response.token) {
+        // Store JWT token in localStorage
+        localStorage.setItem('admin_token', response.token);
+        
         setIsAdmin(true);
         addToast({
           type: 'success',
@@ -50,6 +53,9 @@ function AdminModal({ isOpen, onClose }: AdminModalProps) {
   };
 
   const handleLogout = () => {
+    // Remove JWT token from localStorage
+    localStorage.removeItem('admin_token');
+    
     setIsAdmin(false);
     addToast({
       type: 'info',

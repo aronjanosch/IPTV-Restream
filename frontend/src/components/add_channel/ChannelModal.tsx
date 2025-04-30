@@ -255,26 +255,25 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                   <label htmlFor="url" className="block text-sm font-medium">
                     Stream URL
                   </label>
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                      className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                      {showSensitiveInfo ? 'Hide' : 'Show'} URL
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                    className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                    title="Toggle URL visibility for privacy"
+                  >
+                    {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                    {showSensitiveInfo ? 'Hide' : 'Show'} URL
+                  </button>
                 </div>
                 <input
                   type="url"
                   id="url"
-                  value={isAdmin ? url : getObfuscatedUrl(url)}
+                  value={showSensitiveInfo ? url : getObfuscatedUrl(url)}
                   onChange={(e) => setUrl(e.target.value)}
                   className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter stream URL"
                   required
-                  readOnly={!isAdmin && !showSensitiveInfo}
+                  readOnly={!showSensitiveInfo && url.length > 0}
                 />
               </div>
               <div>
@@ -373,26 +372,25 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                         M3U Text
                       </button>
                     </label>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                        className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                      >
-                        {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                        {showSensitiveInfo ? 'Hide' : 'Show'} URL
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                      className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                      title="Toggle URL visibility for privacy"
+                    >
+                      {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                      {showSensitiveInfo ? 'Hide' : 'Show'} URL
+                    </button>
                   </div>
                   <input
                     type="url"
                     id="playlistUrl"
-                    value={isAdmin ? playlistUrl : getObfuscatedUrl(playlistUrl)}
+                    value={showSensitiveInfo ? playlistUrl : getObfuscatedUrl(playlistUrl)}
                     onChange={(e) => setPlaylistUrl(e.target.value)}
                     className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter M3U playlist URL"
                     required={inputMethod === 'url'}
-                    readOnly={!isAdmin && !showSensitiveInfo}
+                    readOnly={!showSensitiveInfo && playlistUrl.length > 0}
                   />
                 </div>
               ) : (
@@ -415,26 +413,25 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                         M3U Text
                       </button>
                     </label>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                        className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                      >
-                        {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                        {showSensitiveInfo ? 'Hide' : 'Show'} content
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                      className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                      title="Toggle content visibility for privacy"
+                    >
+                      {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                      {showSensitiveInfo ? 'Hide' : 'Show'} content
+                    </button>
                   </div>
                   <textarea
                     id="playlistText"
-                    value={isAdmin || showSensitiveInfo ? playlistText : "#EXTM3U\n# Content hidden for privacy\n# Login as admin to view or edit"}
+                    value={showSensitiveInfo ? playlistText : (playlistText ? "#EXTM3U\n# Content hidden for privacy\n# Click 'Show content' to view or edit" : "")}
                     onChange={(e) => setPlaylistText(e.target.value)}
                     className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px] scroll-container overflow-y-auto"
                     placeholder="#EXTM3U..."
                     required={inputMethod === 'text'}
                     style={{ resize: 'none' }}
-                    readOnly={!isAdmin && !showSensitiveInfo}
+                    readOnly={!showSensitiveInfo && playlistText.length > 0}
                   />
                 </div>
               )}
@@ -508,7 +505,16 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                 <label className="block text-sm font-medium">
                   Custom Headers
                 </label>
-                {isAdmin && (
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
+                    className="flex items-center text-xs text-blue-400 hover:text-blue-300"
+                    title="Toggle headers visibility for privacy"
+                  >
+                    {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                    {showSensitiveInfo ? 'Hide' : 'Show'} headers
+                  </button>
                   <button
                     type="button"
                     onClick={addHeader}
@@ -517,7 +523,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                     <Plus className="w-4 h-4" />
                     <span>Add Header</span>
                   </button>
-                )}
+                </div>
               </div>
               <div className="space-y-2">
                 {headers && headers.map((header, index) => (
@@ -525,21 +531,19 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                     <CustomHeaderInput
                       header={{
                         key: header.key,
-                        value: isAdmin || showSensitiveInfo ? header.value : "***hidden***"
+                        value: showSensitiveInfo ? header.value : "***hidden***"
                       }}
                       onKeyChange={(value) => updateHeader(index, 'key', value)}
                       onValueChange={(value) => updateHeader(index, 'value', value)}
-                      readOnly={!isAdmin && !showSensitiveInfo}
+                      readOnly={!showSensitiveInfo && header.value.length > 0}
                     />
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => removeHeader(index)}
-                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeHeader(index)}
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -547,7 +551,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
           )}
 
           <div className="flex justify-end space-x-3">
-            {isEditMode && isAdmin && (
+            {isEditMode && (
               <button
                 type="button"
                 onClick={handleDelete}
@@ -563,14 +567,12 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
             >
               Cancel
             </button>
-            {isAdmin && (
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {isEditMode ? 'Update' : 'Add'}
-              </button>
-            )}
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {isEditMode ? 'Update' : 'Add'}
+            </button>
           </div>
         </form>
       </div>

@@ -6,10 +6,10 @@ require('dotenv').config();
 
 const ADMIN_ENABLED = process.env.ADMIN_ENABLED === 'true';
 
-async function handleAddPlaylist({ playlist, playlistName, mode, playlistUpdate, headers, isAdmin }, io, socket) {
+async function handleAddPlaylist({ playlist, playlistName, mode, playlistUpdate, headers }, io, socket) {
     try {
-        // If admin mode is enabled but user is not admin, reject the operation
-        if (ADMIN_ENABLED && !isAdmin) {
+        // Check if user is authenticated as admin from the socket middleware
+        if (ADMIN_ENABLED && !socket.user?.isAdmin) {
             return socket.emit('app-error', { message: 'Admin access required to add playlists' });
         }
 
@@ -31,17 +31,17 @@ async function handleAddPlaylist({ playlist, playlistName, mode, playlistUpdate,
     }
 }
 
-async function handleUpdatePlaylist({ playlist, updatedAttributes, isAdmin }, io, socket) {
+async function handleUpdatePlaylist({ playlist, updatedAttributes }, io, socket) {
     try {
-        // If admin mode is enabled but user is not admin, reject the operation
-        if (ADMIN_ENABLED && !isAdmin) {
+        // Check if user is authenticated as admin from the socket middleware
+        if (ADMIN_ENABLED && !socket.user?.isAdmin) {
             return socket.emit('app-error', { message: 'Admin access required to update playlists' });
         }
 
         if (playlist !== updatedAttributes.playlist) {
             // Playlist URL has changed - delete channels and fetch again
-            await handleDeletePlaylist({ playlist, isAdmin }, io, socket);
-            await handleAddPlaylist({ ...updatedAttributes, isAdmin }, io, socket);
+            await handleDeletePlaylist({ playlist }, io, socket);
+            await handleAddPlaylist({ ...updatedAttributes }, io, socket);
             return;
         }
 
@@ -62,10 +62,10 @@ async function handleUpdatePlaylist({ playlist, updatedAttributes, isAdmin }, io
     }
 }
 
-async function handleDeletePlaylist({ playlist, isAdmin }, io, socket) {
+async function handleDeletePlaylist({ playlist }, io, socket) {
     try {
-        // If admin mode is enabled but user is not admin, reject the operation
-        if (ADMIN_ENABLED && !isAdmin) {
+        // Check if user is authenticated as admin from the socket middleware
+        if (ADMIN_ENABLED && !socket.user?.isAdmin) {
             return socket.emit('app-error', { message: 'Admin access required to delete playlists' });
         }
 
@@ -87,11 +87,5 @@ async function handleDeletePlaylist({ playlist, isAdmin }, io, socket) {
 module.exports = (io, socket) => {
     socket.on('add-playlist', data => handleAddPlaylist(data, io, socket));
     socket.on('update-playlist', data => handleUpdatePlaylist(data, io, socket));
-    socket.on('delete-playlist', data => {
-        // Handle both old format (just playlist string) and new format (object with playlist and isAdmin)
-        const playlist = typeof data === 'object' ? data.playlist : data;
-        const isAdmin = typeof data === 'object' ? data.isAdmin : false;
-        
-        handleDeletePlaylist({ playlist, isAdmin }, io, socket);
-    });
+    socket.on('delete-playlist', playlist => handleDeletePlaylist({ playlist }, io, socket));
 };

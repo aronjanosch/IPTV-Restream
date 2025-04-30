@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, Shield } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import ChannelList from './components/ChannelList';
@@ -9,7 +9,7 @@ import socketService from './services/SocketService';
 import apiService from './services/ApiService';
 import SettingsModal from './components/SettingsModal';
 import TvPlaylistModal from './components/TvPlaylistModal';
-import { ToastProvider } from './components/notifications/ToastContext';
+import { ToastProvider, ToastContext } from './components/notifications/ToastContext';
 import ToastContainer from './components/notifications/ToastContainer';
 import { AdminProvider, useAdmin } from './components/admin/AdminContext';
 import AdminModal from './components/admin/AdminModal';
@@ -34,6 +34,7 @@ function AppContent() {
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
   const { isAdmin, isAdminEnabled, setIsAdminEnabled } = useAdmin();
+  const { addToast } = useContext(ToastContext);
 
   // Get unique playlists from channels
   const playlists = useMemo(() => {
@@ -67,6 +68,11 @@ function AppContent() {
     }
     return ['Category', ...Array.from(uniqueGroups)];
   }, [selectedPlaylist, channels]);
+
+  // Handle Socket Reconnect when admin status changes
+  useEffect(() => {
+    socketService.updateAuthToken();
+  }, [isAdmin]);
 
   useEffect(() => {
     // Check if admin mode is enabled on the server
@@ -125,10 +131,20 @@ function AppContent() {
       );
     };
 
+    const errorListener = (error: { message: string }) => {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: error.message,
+        duration: 5000,
+      });
+    };
+
     socketService.subscribeToEvent('channel-added', channelAddedListener);
     socketService.subscribeToEvent('channel-selected', channelSelectedListener);
     socketService.subscribeToEvent('channel-updated', channelUpdatedListener);
     socketService.subscribeToEvent('channel-deleted', channelDeletedListener);
+    socketService.subscribeToEvent('app-error', errorListener);
 
     socketService.connect();
 
@@ -137,6 +153,7 @@ function AppContent() {
       socketService.unsubscribeFromEvent('channel-selected', channelSelectedListener);
       socketService.unsubscribeFromEvent('channel-updated', channelUpdatedListener);
       socketService.unsubscribeFromEvent('channel-deleted', channelDeletedListener);
+      socketService.unsubscribeFromEvent('app-error', errorListener);
       socketService.disconnect();
       console.log('WebSocket connection closed');
     };
