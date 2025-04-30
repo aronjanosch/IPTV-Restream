@@ -72,8 +72,15 @@ const server = app.listen(PORT, async () => {
 });
 
 
-// Web Sockets
-const io = new Server(server);
+// Web Sockets with explicit CORS configuration
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow any origin in development
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: true,
+  },
+});
 
 // Add JWT authentication middleware to socket.io
 io.use(socketAuthMiddleware);
