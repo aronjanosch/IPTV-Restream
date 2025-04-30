@@ -1,0 +1,25 @@
+version: '3'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - streams_data:/streams
+      - channels:/channels
+    environment:
+      - STORAGE_PATH=/streams/
+      - ADMIN_ENABLED=true
+      - ADMIN_PASSWORD=dev_password
+    ports:
+      - "5050:5000"
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+volumes:
+  streams_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  channels:
