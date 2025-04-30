@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 interface AdminContextType {
   isAdmin: boolean;
@@ -26,7 +26,7 @@ interface AdminProviderProps {
 // Helper function to check if token is valid
 const isTokenValid = (token: string): boolean => {
   try {
-    const decoded: any = jwt_decode(token);
+    const decoded: any = jwtDecode(token);
     // Check if token is expired
     return decoded.exp * 1000 > Date.now();
   } catch {
