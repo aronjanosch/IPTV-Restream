@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Plus, Trash2, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import socketService from '../../services/SocketService';
 import { CustomHeader, Channel, ChannelMode } from '../../types';
 import CustomHeaderInput from './CustomHeaderInput';
@@ -16,7 +16,6 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
   const [type, setType] = useState<'channel' | 'playlist'>('playlist');
   const [isEditMode, setIsEditMode] = useState(false);
   const [inputMethod, setInputMethod] = useState<'url' | 'text'>('url');
-  const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
 
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -173,32 +172,6 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
     onClose();
   };
 
-  // Obfuscate part of the URL to hide sensitive information
-  const getObfuscatedUrl = (fullUrl: string) => {
-    if (!fullUrl || showSensitiveInfo) return fullUrl;
-    
-    try {
-      const url = new URL(fullUrl);
-      // Hide username and password in URL if present
-      if (url.username || url.password) {
-        return fullUrl.replace(/\/\/([^:@]+:[^@]+@)/g, '//***:***@');
-      }
-      
-      // Hide tokens or API keys in query params
-      if (url.search && (url.search.includes('token') || url.search.includes('key') || url.search.includes('password') || url.search.includes('auth'))) {
-        return `${url.origin}${url.pathname}?***hidden***`;
-      }
-      
-      return fullUrl;
-    } catch {
-      // If URL is malformed, just return a partially obfuscated string
-      if (fullUrl.length > 20) {
-        return fullUrl.substring(0, 10) + '...' + fullUrl.substring(fullUrl.length - 10);
-      }
-      return fullUrl;
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 rounded-lg w-full max-w-md">
@@ -255,25 +228,15 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                   <label htmlFor="url" className="block text-sm font-medium">
                     Stream URL
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                    className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                    title="Toggle URL visibility for privacy"
-                  >
-                    {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                    {showSensitiveInfo ? 'Hide' : 'Show'} URL
-                  </button>
                 </div>
                 <input
                   type="url"
                   id="url"
-                  value={showSensitiveInfo ? url : getObfuscatedUrl(url)}
+                  value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter stream URL"
                   required
-                  readOnly={!showSensitiveInfo && url.length > 0}
                 />
               </div>
               <div>
@@ -372,25 +335,15 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                         M3U Text
                       </button>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                      className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                      title="Toggle URL visibility for privacy"
-                    >
-                      {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                      {showSensitiveInfo ? 'Hide' : 'Show'} URL
-                    </button>
                   </div>
                   <input
                     type="url"
                     id="playlistUrl"
-                    value={showSensitiveInfo ? playlistUrl : getObfuscatedUrl(playlistUrl)}
+                    value={playlistUrl}
                     onChange={(e) => setPlaylistUrl(e.target.value)}
                     className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter M3U playlist URL"
                     required={inputMethod === 'url'}
-                    readOnly={!showSensitiveInfo && playlistUrl.length > 0}
                   />
                 </div>
               ) : (
@@ -413,25 +366,15 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                         M3U Text
                       </button>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                      className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                      title="Toggle content visibility for privacy"
-                    >
-                      {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                      {showSensitiveInfo ? 'Hide' : 'Show'} content
-                    </button>
                   </div>
                   <textarea
                     id="playlistText"
-                    value={showSensitiveInfo ? playlistText : (playlistText ? "#EXTM3U\n# Content hidden for privacy\n# Click 'Show content' to view or edit" : "")}
+                    value={playlistText}
                     onChange={(e) => setPlaylistText(e.target.value)}
                     className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px] scroll-container overflow-y-auto"
                     placeholder="#EXTM3U..."
                     required={inputMethod === 'text'}
                     style={{ resize: 'none' }}
-                    readOnly={!showSensitiveInfo && playlistText.length > 0}
                   />
                 </div>
               )}
@@ -508,15 +451,6 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
-                    onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                    className="flex items-center text-xs text-blue-400 hover:text-blue-300"
-                    title="Toggle headers visibility for privacy"
-                  >
-                    {showSensitiveInfo ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                    {showSensitiveInfo ? 'Hide' : 'Show'} headers
-                  </button>
-                  <button
-                    type="button"
                     onClick={addHeader}
                     className="flex items-center space-x-1 text-sm text-blue-400 hover:text-blue-300"
                   >
@@ -529,13 +463,9 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                 {headers && headers.map((header, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <CustomHeaderInput
-                      header={{
-                        key: header.key,
-                        value: showSensitiveInfo ? header.value : "***hidden***"
-                      }}
+                      header={header}
                       onKeyChange={(value) => updateHeader(index, 'key', value)}
                       onValueChange={(value) => updateHeader(index, 'value', value)}
-                      readOnly={!showSensitiveInfo && header.value.length > 0}
                     />
                     <button
                       type="button"
