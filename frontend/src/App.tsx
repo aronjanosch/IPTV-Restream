@@ -1,18 +1,30 @@
-import { useState, useEffect, useMemo, useContext } from 'react';
-import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, Shield } from 'lucide-react';
-import VideoPlayer from './components/VideoPlayer';
-import ChannelList from './components/ChannelList';
-import Chat from './components/chat/Chat';
-import ChannelModal from './components/add_channel/ChannelModal';
-import { Channel } from './types';
-import socketService from './services/SocketService';
-import apiService from './services/ApiService';
-import SettingsModal from './components/SettingsModal';
-import TvPlaylistModal from './components/TvPlaylistModal';
-import { ToastProvider, ToastContext } from './components/notifications/ToastContext';
-import ToastContainer from './components/notifications/ToastContainer';
-import { AdminProvider, useAdmin } from './components/admin/AdminContext';
-import AdminModal from './components/admin/AdminModal';
+import { useState, useEffect, useMemo, useContext } from "react";
+import {
+  Search,
+  Plus,
+  Settings,
+  Users,
+  Radio,
+  Tv2,
+  ChevronDown,
+  Shield,
+} from "lucide-react";
+import VideoPlayer from "./components/VideoPlayer";
+import ChannelList from "./components/ChannelList";
+import Chat from "./components/chat/Chat";
+import ChannelModal from "./components/add_channel/ChannelModal";
+import { Channel } from "./types";
+import socketService from "./services/SocketService";
+import apiService from "./services/ApiService";
+import SettingsModal from "./components/SettingsModal";
+import TvPlaylistModal from "./components/TvPlaylistModal";
+import {
+  ToastProvider,
+  ToastContext,
+} from "./components/notifications/ToastContext";
+import ToastContainer from "./components/notifications/ToastContainer";
+import { AdminProvider, useAdmin } from "./components/admin/AdminContext";
+import AdminModal from "./components/admin/AdminModal";
 
 function AppContent() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -22,14 +34,15 @@ function AppContent() {
   const [isTvPlaylistOpen, setIsTvPlaylistOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [syncEnabled, setSyncEnabled] = useState(() => {
-    const savedValue = localStorage.getItem('syncEnabled');
+    const savedValue = localStorage.getItem("syncEnabled");
     return savedValue !== null ? JSON.parse(savedValue) : false;
   });
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [editChannel, setEditChannel] = useState<Channel | null>(null);
 
-  const [selectedPlaylist, setSelectedPlaylist] = useState<string>('All Channels');
-  const [selectedGroup, setSelectedGroup] = useState<string>('Category');
+  const [selectedPlaylist, setSelectedPlaylist] =
+    useState<string>("All Channels");
+  const [selectedGroup, setSelectedGroup] = useState<string>("Category");
   const [isPlaylistDropdownOpen, setIsPlaylistDropdownOpen] = useState(false);
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
@@ -38,60 +51,77 @@ function AppContent() {
 
   // Get unique playlists from channels
   const playlists = useMemo(() => {
-    const uniquePlaylists = new Set(channels.map(channel => channel.playlistName).filter(playlistName => playlistName !== null));
-    return ['All Channels', ...Array.from(uniquePlaylists)];
+    const uniquePlaylists = new Set(
+      channels
+        .map((channel) => channel.playlistName)
+        .filter((playlistName) => playlistName !== null)
+    );
+    return ["All Channels", ...Array.from(uniquePlaylists)];
   }, [channels]);
 
   const filteredChannels = useMemo(() => {
     //Filter by playlist
-    let filteredByPlaylist = selectedPlaylist === 'All Channels' ? channels : channels.filter(channel => 
-      channel.playlistName === selectedPlaylist
-    );
+    let filteredByPlaylist =
+      selectedPlaylist === "All Channels"
+        ? channels
+        : channels.filter(
+            (channel) => channel.playlistName === selectedPlaylist
+          );
 
     //Filter by group
-    filteredByPlaylist = selectedGroup === 'Category' ? filteredByPlaylist : filteredByPlaylist.filter(channel => 
-      channel.group === selectedGroup
-    );
+    filteredByPlaylist =
+      selectedGroup === "Category"
+        ? filteredByPlaylist
+        : filteredByPlaylist.filter(
+            (channel) => channel.group === selectedGroup
+          );
 
     //Filter by name search
-    return filteredByPlaylist.filter(channel =>
+    return filteredByPlaylist.filter((channel) =>
       channel.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [channels, selectedPlaylist, selectedGroup, searchQuery]);
 
   const groups = useMemo(() => {
     let uniqueGroups;
-    if(selectedPlaylist === 'All Channels') {
-      uniqueGroups = new Set(channels.map(channel => channel.group).filter(group => group !== null));
+    if (selectedPlaylist === "All Channels") {
+      uniqueGroups = new Set(
+        channels
+          .map((channel) => channel.group)
+          .filter((group) => group !== null)
+      );
     } else {
-      uniqueGroups = new Set(channels.filter(channel => channel.group !== null && channel.playlistName === selectedPlaylist).map(channel => channel.group));
+      uniqueGroups = new Set(
+        channels
+          .filter(
+            (channel) =>
+              channel.group !== null &&
+              channel.playlistName === selectedPlaylist
+          )
+          .map((channel) => channel.group)
+      );
     }
-    return ['Category', ...Array.from(uniqueGroups)];
+    return ["Category", ...Array.from(uniqueGroups)];
   }, [selectedPlaylist, channels]);
-
-  // Handle Socket Reconnect when admin status changes
-  useEffect(() => {
-    socketService.updateAuthToken();
-  }, [isAdmin]);
 
   useEffect(() => {
     // Check if admin mode is enabled on the server
     apiService
-      .request<{enabled: boolean}>('/auth/admin-status', 'GET')
+      .request<{ enabled: boolean }>("/auth/admin-status", "GET")
       .then((data) => setIsAdminEnabled(data.enabled))
-      .catch((error) => console.error('Error checking admin status:', error));
+      .catch((error) => console.error("Error checking admin status:", error));
 
     apiService
-      .request<Channel[]>('/channels/', 'GET')
+      .request<Channel[]>("/channels/", "GET")
       .then((data) => setChannels(data))
-      .catch((error) => console.error('Error loading channels:', error));
+      .catch((error) => console.error("Error loading channels:", error));
 
     apiService
-      .request<Channel>('/channels/current', 'GET')
+      .request<Channel>("/channels/current", "GET")
       .then((data) => setSelectedChannel(data))
-      .catch((error) => console.error('Error loading current channel:', error));
+      .catch((error) => console.error("Error loading current channel:", error));
 
-    console.log('Subscribing to events');
+    console.log("Subscribing to events");
     const channelAddedListener = (channel: Channel) => {
       setChannels((prevChannels) => [...prevChannels, channel]);
     };
@@ -108,21 +138,23 @@ function AppContent() {
       );
 
       setSelectedChannel((selectedChannel: Channel | null) => {
-          if(selectedChannel?.id === updatedChannel.id) {
-
-            // Reload stream if the stream attributes (url, headers) have changed
-            if((selectedChannel?.url != updatedChannel.url || JSON.stringify(selectedChannel?.headers) != JSON.stringify(updatedChannel.headers)) && selectedChannel?.mode === 'restream'){ 
-              //TODO: find a better solution instead of reloading (problem is m3u8 needs time to refresh server-side)
-              setTimeout(() => {
-                window.location.reload(); 
-              }, 3000);
-            }
-            return updatedChannel;
+        if (selectedChannel?.id === updatedChannel.id) {
+          // Reload stream if the stream attributes (url, headers) have changed
+          if (
+            (selectedChannel?.url != updatedChannel.url ||
+              JSON.stringify(selectedChannel?.headers) !=
+                JSON.stringify(updatedChannel.headers)) &&
+            selectedChannel?.mode === "restream"
+          ) {
+            //TODO: find a better solution instead of reloading (problem is m3u8 needs time to refresh server-side)
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
           }
-          return selectedChannel;
+          return updatedChannel;
         }
-      ); 
-
+        return selectedChannel;
+      });
     };
 
     const channelDeletedListener = (deletedChannel: number) => {
@@ -133,29 +165,38 @@ function AppContent() {
 
     const errorListener = (error: { message: string }) => {
       addToast({
-        type: 'error',
-        title: 'Error',
+        type: "error",
+        title: "Error",
         message: error.message,
         duration: 5000,
       });
     };
 
-    socketService.subscribeToEvent('channel-added', channelAddedListener);
-    socketService.subscribeToEvent('channel-selected', channelSelectedListener);
-    socketService.subscribeToEvent('channel-updated', channelUpdatedListener);
-    socketService.subscribeToEvent('channel-deleted', channelDeletedListener);
-    socketService.subscribeToEvent('app-error', errorListener);
+    socketService.subscribeToEvent("channel-added", channelAddedListener);
+    socketService.subscribeToEvent("channel-selected", channelSelectedListener);
+    socketService.subscribeToEvent("channel-updated", channelUpdatedListener);
+    socketService.subscribeToEvent("channel-deleted", channelDeletedListener);
+    socketService.subscribeToEvent("app-error", errorListener);
 
     socketService.connect();
 
     return () => {
-      socketService.unsubscribeFromEvent('channel-added', channelAddedListener);
-      socketService.unsubscribeFromEvent('channel-selected', channelSelectedListener);
-      socketService.unsubscribeFromEvent('channel-updated', channelUpdatedListener);
-      socketService.unsubscribeFromEvent('channel-deleted', channelDeletedListener);
-      socketService.unsubscribeFromEvent('app-error', errorListener);
+      socketService.unsubscribeFromEvent("channel-added", channelAddedListener);
+      socketService.unsubscribeFromEvent(
+        "channel-selected",
+        channelSelectedListener
+      );
+      socketService.unsubscribeFromEvent(
+        "channel-updated",
+        channelUpdatedListener
+      );
+      socketService.unsubscribeFromEvent(
+        "channel-deleted",
+        channelDeletedListener
+      );
+      socketService.unsubscribeFromEvent("app-error", errorListener);
       socketService.disconnect();
-      console.log('WebSocket connection closed');
+      console.log("WebSocket connection closed");
     };
   }, []);
 
@@ -176,7 +217,7 @@ function AppContent() {
           <div className="flex items-center space-x-2">
             <Radio className="w-8 h-8 text-blue-500" />
             <h1 className="text-2xl font-bold">StreamHub</h1>
-            
+
             {isAdmin && (
               <span className="ml-2 flex items-center px-2 py-1 text-xs font-medium text-green-400 bg-green-400 bg-opacity-10 rounded-full border border-green-400">
                 <Shield className="w-3 h-3 mr-1" />
@@ -211,7 +252,9 @@ function AppContent() {
             {isAdminEnabled && (
               <button
                 onClick={() => setIsAdminModalOpen(true)}
-                className={`p-2 hover:bg-gray-800 rounded-lg transition-colors ${isAdmin ? 'text-green-500' : ''}`}
+                className={`p-2 hover:bg-gray-800 rounded-lg transition-colors ${
+                  isAdmin ? "text-green-500" : ""
+                }`}
               >
                 <Shield className="w-6 h-6" />
               </button>
@@ -238,7 +281,11 @@ function AppContent() {
                           {selectedPlaylist}
                         </h2>
                       </div>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isPlaylistDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                          isPlaylistDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
                     </button>
 
                     {isPlaylistDropdownOpen && (
@@ -249,16 +296,18 @@ function AppContent() {
                               key={playlist}
                               onClick={() => {
                                 setSelectedPlaylist(playlist);
-                                setSelectedGroup('Category');
+                                setSelectedGroup("Category");
                                 setIsPlaylistDropdownOpen(false);
                               }}
                               className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${
-                                selectedPlaylist === playlist ? 'text-blue-400 text-base font-semibold' : 'text-gray-200'
+                                selectedPlaylist === playlist
+                                  ? "text-blue-400 text-base font-semibold"
+                                  : "text-gray-200"
                               }`}
                               style={{
-                                whiteSpace: 'normal',
-                                wordWrap: 'break-word', 
-                                overflowWrap: 'anywhere', 
+                                whiteSpace: "normal",
+                                wordWrap: "break-word",
+                                overflowWrap: "anywhere",
                               }}
                             >
                               {playlist}
@@ -283,7 +332,11 @@ function AppContent() {
                           {selectedGroup}
                         </h4>
                       </div>
-                      <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isGroupDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${
+                          isGroupDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
                     </button>
 
                     {isGroupDropdownOpen && (
@@ -297,15 +350,17 @@ function AppContent() {
                                 setIsGroupDropdownOpen(false);
                               }}
                               className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${
-                                selectedGroup === group ? 'text-blue-400 text-base font-semibold' : 'text-gray-200'
+                                selectedGroup === group
+                                  ? "text-blue-400 text-base font-semibold"
+                                  : "text-gray-200"
                               }`}
                               style={{
-                                whiteSpace: 'normal',
-                                wordWrap: 'break-word', 
-                                overflowWrap: 'anywhere', 
+                                whiteSpace: "normal",
+                                wordWrap: "break-word",
+                                overflowWrap: "anywhere",
                               }}
                             >
-                              {group === 'Category' ? 'All Categories' : group}
+                              {group === "Category" ? "All Categories" : group}
                             </button>
                           ))}
                         </div>
@@ -367,7 +422,7 @@ function AppContent() {
         syncEnabled={syncEnabled}
         onSyncChange={(enabled) => {
           setSyncEnabled(enabled);
-          localStorage.setItem('syncEnabled', JSON.stringify(enabled));
+          localStorage.setItem("syncEnabled", JSON.stringify(enabled));
         }}
       />
 
