@@ -1,0 +1,18 @@
+version: '3'
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    environment:
+      - VITE_BACKEND_URL=http://localhost:5050
+      - VITE_STREAM_DELAY=18
+      - VITE_STREAM_PROXY_DELAY=30
+      - VITE_SYNCHRONIZATION_TOLERANCE=0.8
+      - VITE_SYNCHRONIZATION_MAX_DEVIATION=4
+      - VITE_SYNCHRONIZATION_ADJUSTMENT=0.06
+      - VITE_SYNCHRONIZATION_MAX_ADJUSTMENT=0.16
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    network_mode: "host"
