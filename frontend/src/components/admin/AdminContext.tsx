@@ -1,5 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { jwtDecode } from 'jwt-decode';
+import socketService from '../../services/SocketService';
 
 interface AdminContextType {
   isAdmin: boolean;
@@ -14,7 +21,7 @@ const AdminContext = createContext<AdminContextType>({
   setIsAdmin: () => {},
   isAdminEnabled: false,
   setIsAdminEnabled: () => {},
-  adminToken: null
+  adminToken: null,
 });
 
 export const useAdmin = () => useContext(AdminContext);
@@ -39,10 +46,27 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   const [isAdminEnabled, setIsAdminEnabled] = useState(false);
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
+  // Effect to handle token changes
+  useEffect(() => {
+    // When admin status changes, update socket connection
+    if (isAdmin) {
+      // Small delay to ensure token is saved before reconnecting
+      setTimeout(() => {
+        socketService.updateAuthToken();
+      }, 100);
+    } else {
+      // Reset token and reconnect
+      localStorage.removeItem('admin_token');
+      setAdminToken(null);
+      socketService.updateAuthToken();
+    }
+  }, [isAdmin]);
+
+  // Initial setup - check for existing token
   useEffect(() => {
     // Check if there's a token in localStorage on component mount
     const token = localStorage.getItem('admin_token');
-    
+
     if (token && isTokenValid(token)) {
       setIsAdmin(true);
       setAdminToken(token);
@@ -53,13 +77,15 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   }, []);
 
   return (
-    <AdminContext.Provider value={{ 
-      isAdmin, 
-      setIsAdmin, 
-      isAdminEnabled, 
-      setIsAdminEnabled,
-      adminToken
-    }}>
+    <AdminContext.Provider
+      value={{
+        isAdmin,
+        setIsAdmin,
+        isAdminEnabled,
+        setIsAdminEnabled,
+        adminToken,
+      }}
+    >
       {children}
     </AdminContext.Provider>
   );

@@ -15,6 +15,7 @@ import { AdminProvider, useAdmin } from './components/admin/AdminContext';
 import AdminModal from './components/admin/AdminModal';
 
 function AppContent() {
+
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,12 +45,12 @@ function AppContent() {
 
   const filteredChannels = useMemo(() => {
     //Filter by playlist
-    let filteredByPlaylist = selectedPlaylist === 'All Channels' ? channels : channels.filter(channel => 
+    let filteredByPlaylist = selectedPlaylist === 'All Channels' ? channels : channels.filter(channel =>
       channel.playlistName === selectedPlaylist
     );
 
     //Filter by group
-    filteredByPlaylist = selectedGroup === 'Category' ? filteredByPlaylist : filteredByPlaylist.filter(channel => 
+    filteredByPlaylist = selectedGroup === 'Category' ? filteredByPlaylist : filteredByPlaylist.filter(channel =>
       channel.group === selectedGroup
     );
 
@@ -61,7 +62,7 @@ function AppContent() {
 
   const groups = useMemo(() => {
     let uniqueGroups;
-    if(selectedPlaylist === 'All Channels') {
+    if (selectedPlaylist === 'All Channels') {
       uniqueGroups = new Set(channels.map(channel => channel.group).filter(group => group !== null));
     } else {
       uniqueGroups = new Set(channels.filter(channel => channel.group !== null && channel.playlistName === selectedPlaylist).map(channel => channel.group));
@@ -69,15 +70,10 @@ function AppContent() {
     return ['Category', ...Array.from(uniqueGroups)];
   }, [selectedPlaylist, channels]);
 
-  // Handle Socket Reconnect when admin status changes
-  useEffect(() => {
-    socketService.updateAuthToken();
-  }, [isAdmin]);
-
   useEffect(() => {
     // Check if admin mode is enabled on the server
     apiService
-      .request<{enabled: boolean}>('/auth/admin-status', 'GET')
+      .request<{ enabled: boolean }>('/auth/admin-status', 'GET')
       .then((data) => setIsAdminEnabled(data.enabled))
       .catch((error) => console.error('Error checking admin status:', error));
 
@@ -103,26 +99,29 @@ function AppContent() {
     const channelUpdatedListener = (updatedChannel: Channel) => {
       setChannels((prevChannels) =>
         prevChannels.map((channel) =>
-          channel.id === updatedChannel.id ? updatedChannel : channel
+          channel.id === updatedChannel.id ?
+            updatedChannel : channel
         )
       );
 
       setSelectedChannel((selectedChannel: Channel | null) => {
-          if(selectedChannel?.id === updatedChannel.id) {
-
-            // Reload stream if the stream attributes (url, headers) have changed
-            if((selectedChannel?.url != updatedChannel.url || JSON.stringify(selectedChannel?.headers) != JSON.stringify(updatedChannel.headers)) && selectedChannel?.mode === 'restream'){ 
-              //TODO: find a better solution instead of reloading (problem is m3u8 needs time to refresh server-side)
-              setTimeout(() => {
-                window.location.reload(); 
-              }, 3000);
-            }
-            return updatedChannel;
+        if (selectedChannel?.id === updatedChannel.id) {
+          // Reload stream if the stream attributes (url, headers) have changed
+          if (
+            (selectedChannel?.url != updatedChannel.url ||
+              JSON.stringify(selectedChannel?.headers) !=
+              JSON.stringify(updatedChannel.headers)) &&
+            selectedChannel?.mode === 'restream'
+          ) {
+            //TODO: find a better solution instead of reloading (problem is m3u8 needs time to refresh server-side)
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
           }
-          return selectedChannel;
+          return updatedChannel;
         }
-      ); 
-
+        return selectedChannel;
+      });
     };
 
     const channelDeletedListener = (deletedChannel: number) => {
@@ -150,9 +149,18 @@ function AppContent() {
 
     return () => {
       socketService.unsubscribeFromEvent('channel-added', channelAddedListener);
-      socketService.unsubscribeFromEvent('channel-selected', channelSelectedListener);
-      socketService.unsubscribeFromEvent('channel-updated', channelUpdatedListener);
-      socketService.unsubscribeFromEvent('channel-deleted', channelDeletedListener);
+      socketService.unsubscribeFromEvent(
+        'channel-selected',
+        channelSelectedListener
+      );
+      socketService.unsubscribeFromEvent(
+        'channel-updated',
+        channelUpdatedListener
+      );
+      socketService.unsubscribeFromEvent(
+        'channel-deleted',
+        channelDeletedListener
+      );
       socketService.unsubscribeFromEvent('app-error', errorListener);
       socketService.disconnect();
       console.log('WebSocket connection closed');
@@ -176,7 +184,7 @@ function AppContent() {
           <div className="flex items-center space-x-2">
             <Radio className="w-8 h-8 text-blue-500" />
             <h1 className="text-2xl font-bold">StreamHub</h1>
-            
+
             {isAdmin && (
               <span className="ml-2 flex items-center px-2 py-1 text-xs font-medium text-green-400 bg-green-400 bg-opacity-10 rounded-full border border-green-400">
                 <Shield className="w-3 h-3 mr-1" />
@@ -211,7 +219,8 @@ function AppContent() {
             {isAdminEnabled && (
               <button
                 onClick={() => setIsAdminModalOpen(true)}
-                className={`p-2 hover:bg-gray-800 rounded-lg transition-colors ${isAdmin ? 'text-green-500' : ''}`}
+                className={`p-2 hover:bg-gray-800 rounded-lg transition-colors ${isAdmin ?
+                  "text-green-500" : ""}`}
               >
                 <Shield className="w-6 h-6" />
               </button>
@@ -238,7 +247,8 @@ function AppContent() {
                           {selectedPlaylist}
                         </h2>
                       </div>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isPlaylistDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isPlaylistDropdownOpen ?
+                        "rotate-180" : ""}`} />
                     </button>
 
                     {isPlaylistDropdownOpen && (
@@ -252,13 +262,12 @@ function AppContent() {
                                 setSelectedGroup('Category');
                                 setIsPlaylistDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${
-                                selectedPlaylist === playlist ? 'text-blue-400 text-base font-semibold' : 'text-gray-200'
-                              }`}
+                              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${selectedPlaylist === playlist ?
+                                "text-blue-400 text-base font-semibold" : "text-gray-200"}`}
                               style={{
                                 whiteSpace: 'normal',
-                                wordWrap: 'break-word', 
-                                overflowWrap: 'anywhere', 
+                                wordWrap: 'break-word',
+                                overflowWrap: 'anywhere',
                               }}
                             >
                               {playlist}
@@ -283,7 +292,8 @@ function AppContent() {
                           {selectedGroup}
                         </h4>
                       </div>
-                      <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isGroupDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isGroupDropdownOpen ?
+                        "rotate-180" : ""}`} />
                     </button>
 
                     {isGroupDropdownOpen && (
@@ -296,13 +306,12 @@ function AppContent() {
                                 setSelectedGroup(group);
                                 setIsGroupDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${
-                                selectedGroup === group ? 'text-blue-400 text-base font-semibold' : 'text-gray-200'
-                              }`}
+                              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${selectedGroup === group ?
+                                "text-blue-400 text-base font-semibold" : "text-gray-200"}`}
                               style={{
                                 whiteSpace: 'normal',
-                                wordWrap: 'break-word', 
-                                overflowWrap: 'anywhere', 
+                                wordWrap: 'break-word',
+                                overflowWrap: 'anywhere',
                               }}
                             >
                               {group === 'Category' ? 'All Categories' : group}
