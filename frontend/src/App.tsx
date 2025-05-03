@@ -345,8 +345,6 @@ function AppContent() {
                 selectedChannel={selectedChannel}
                 setSearchQuery={setSearchQuery}
                 onEditChannel={handleEditChannel}
-                isAdmin={isAdmin}
-                isAdminEnabled={isAdminEnabled}
               />
             </div>
 
@@ -366,7 +364,6 @@ function AppContent() {
             setEditChannel(null);
           }}
           channel={editChannel}
-          isAdmin={isAdmin}
         />
       )}
 
@@ -383,7 +380,6 @@ function AppContent() {
       <TvPlaylistModal
         isOpen={isTvPlaylistOpen}
         onClose={() => setIsTvPlaylistOpen(false)}
-        isAdmin={isAdmin}
       />
 
       <AdminModal
