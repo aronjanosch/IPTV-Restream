@@ -1,4 +1,4 @@
-const authService = require("../../services/auth/JwtService");
+const authService = require("../../services/auth/AuthService");
 
 /**
  * Socket.io middleware to authenticate users via JWT token

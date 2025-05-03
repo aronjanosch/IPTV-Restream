@@ -1,5 +1,5 @@
 require("dotenv").config();
-const authService = require("../services/auth/JwtService");
+const authService = require("../services/auth/AuthService");
 
 module.exports = {
   adminLogin(req, res) {
