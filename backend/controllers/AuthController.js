@@ -1,68 +1,57 @@
-require('dotenv').config();
-const jwt = require('jsonwebtoken');
-
-const ADMIN_ENABLED = process.env.ADMIN_ENABLED === 'true';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const JWT_SECRET = process.env.JWT_SECRET || 'streamhub-jwt-secret';
-const JWT_EXPIRY = '24h';
+require("dotenv").config();
+const authService = require("../services/auth/JwtService");
 
 module.exports = {
   adminLogin(req, res) {
-    if (!ADMIN_ENABLED || ADMIN_PASSWORD === undefined) {
-      return res.status(403).json({ 
+    if (!authService.isAdminEnabled()) {
+      return res.status(403).json({
         success: false,
-        message: 'Admin mode is disabled on this server' 
+        message: "Admin mode is disabled on this server",
       });
     }
 
     const { password } = req.body;
 
-    if (password === ADMIN_PASSWORD) {
-      // Generate JWT token
-      const token = jwt.sign(
-        { isAdmin: true },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRY }
-      );
+    if (authService.verifyAdminPassword(password)) {
+      const token = authService.generateAdminToken();
 
-      return res.json({ 
+      return res.json({
         success: true,
-        token
+        token,
       });
     } else {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Invalid password' 
+        message: "Invalid password",
       });
     }
   },
 
   checkAdminStatus(req, res) {
-    res.json({ 
-      enabled: ADMIN_ENABLED 
+    res.json({
+      enabled: authService.isAdminEnabled(),
     });
   },
 
-  // Verify JWT token middleware
   verifyToken(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Access denied. No token provided.' 
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. No token provided.",
       });
     }
 
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      next();
-    } catch (error) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid token.' 
+    const decoded = authService.verifyToken(token);
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token.",
       });
     }
-  }
+
+    req.user = decoded;
+    next();
+  },
 };
