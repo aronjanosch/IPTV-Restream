@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require('express-session');
 const dotenv = require('dotenv');
 const { Server } = require('socket.io');
 
@@ -13,20 +14,43 @@ const ChannelService = require('./services/ChannelService');
 const PlaylistSocketHandler = require('./socket/PlaylistSocketHandler');
 const PlaylistUpdater = require('./services/PlaylistUpdater');
 
+// Authentication
+const passport = require('./middleware/auth');
+const authRoutes = require('./routes/auth');
+const { requireAdmin, authEnabledOrAuthenticated } = require('./middleware/authorize');
+
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Authentication routes
+app.use('/auth', authRoutes);
+
 const apiRouter = express.Router();
 apiRouter.get('/', channelController.getChannels);
 apiRouter.get('/current', channelController.getCurrentChannel);
-apiRouter.delete('/clear', channelController.clearChannels);
+apiRouter.delete('/clear', requireAdmin, channelController.clearChannels);
 apiRouter.get('/playlist', centralChannelController.playlist);
 apiRouter.get('/:channelId', channelController.getChannel);
-apiRouter.delete('/:channelId', channelController.deleteChannel);
-apiRouter.put('/:channelId', channelController.updateChannel);
-apiRouter.post('/', channelController.addChannel);
+apiRouter.delete('/:channelId', requireAdmin, channelController.deleteChannel);
+apiRouter.put('/:channelId', requireAdmin, channelController.updateChannel);
+apiRouter.post('/', requireAdmin, channelController.addChannel);
 app.use('/api/channels', apiRouter);
 
 const proxyRouter = express.Router();
@@ -37,7 +61,7 @@ proxyRouter.get('/current', centralChannelController.currentChannel);
 app.use('/proxy', proxyRouter);
 
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, async () => {
   console.log(`Server listening on Port ${PORT}`);
   if (ChannelService.getCurrentChannel().restream()) {
