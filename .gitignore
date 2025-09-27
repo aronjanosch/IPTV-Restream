@@ -20,6 +20,13 @@ yarn-error.log*
 # Environment variables
 .env
 
+# Authentication data (sensitive)
+cookies.txt
+backend/cookies.txt
+backend/user_cookies.txt
+backend/data/users.db
+backend/data/
+
 # Build output
 dist/
 build/
