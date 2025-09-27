@@ -1,7 +1,13 @@
-// Not used
 export interface User {
+  id: number;
+  email: string;
   name: string;
-  avatar: string;
+  role: 'admin' | 'user';
+}
+
+export interface AuthResponse {
+  authenticated: boolean;
+  user?: User;
 }
 
 export interface RandomUser {

@@ -18,6 +18,7 @@ const apiService = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       };
 
       if (body) {
