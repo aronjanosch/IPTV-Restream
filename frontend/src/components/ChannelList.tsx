@@ -1,6 +1,7 @@
 import React from 'react';
 import { Channel } from '../types';
 import socketService from '../services/SocketService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -10,6 +11,7 @@ interface ChannelListProps {
 }
 
 function ChannelList({ channels, selectedChannel, setSearchQuery, onEditChannel }: ChannelListProps) {
+  const { user, authenticated } = useAuth();
 
   const onSelectChannel = (channel: Channel) => {
     setSearchQuery('');
@@ -19,7 +21,9 @@ function ChannelList({ channels, selectedChannel, setSearchQuery, onEditChannel 
 
   const onRightClickChannel = (event: React.MouseEvent, channel: Channel) => {
     event.preventDefault();
-    onEditChannel(channel);
+    if (authenticated && user?.role === 'admin') {
+      onEditChannel(channel);
+    }
   };
 
   return (

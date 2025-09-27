@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown } from 'lucide-react';
+import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, UserIcon } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import ChannelList from './components/ChannelList';
 import Chat from './components/chat/Chat';
@@ -11,17 +11,25 @@ import SettingsModal from './components/SettingsModal';
 import TvPlaylistModal from './components/TvPlaylistModal';
 import { ToastProvider } from './components/notifications/ToastContext';
 import ToastContainer from './components/notifications/ToastContainer';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthPage from './components/auth/AuthPage';
+import AdminSetupWizard from './components/auth/AdminSetupWizard';
+import UserProfile from './components/auth/UserProfile';
+import ProtectedComponent from './components/ProtectedComponent';
 
-function App() {
+function AppContent() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTvPlaylistOpen, setIsTvPlaylistOpen] = useState(false);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [syncEnabled, setSyncEnabled] = useState(() => {
     const savedValue = localStorage.getItem('syncEnabled');
     return savedValue !== null ? JSON.parse(savedValue) : false;
   });
+
+  const { user, authenticated, loading, setupRequired } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [editChannel, setEditChannel] = useState<Channel | null>(null);
 
@@ -136,6 +144,39 @@ function App() {
     setIsModalOpen(true);
   };
 
+  // Show loading or auth page for unauthenticated users
+  if (loading) {
+    return (
+      <ToastProvider>
+        <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <Radio className="w-12 h-12 text-blue-500 mx-auto mb-4 animate-spin" />
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        </div>
+        <ToastContainer />
+      </ToastProvider>
+    );
+  }
+
+  if (setupRequired) {
+    return (
+      <ToastProvider>
+        <AdminSetupWizard />
+        <ToastContainer />
+      </ToastProvider>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <ToastProvider>
+        <AuthPage />
+        <ToastContainer />
+      </ToastProvider>
+    );
+  }
+
   return (
     <ToastProvider>
       <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -168,6 +209,14 @@ function App() {
                 className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
               >
                 <Settings className="w-6 h-6 text-blue-500" />
+              </button>
+
+              <button
+                onClick={() => setIsUserProfileOpen(true)}
+                className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <UserIcon className="w-6 h-6 text-blue-500" />
+                <span className="text-sm text-gray-300">{user?.name}</span>
               </button>
             </div>
           </header>
@@ -267,16 +316,18 @@ function App() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setIsModalOpen(true);
-                      setIsGroupDropdownOpen(false);
-                      setIsPlaylistDropdownOpen(false);
-                    }}
-                    className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
+                  <ProtectedComponent requireAdmin={true}>
+                    <button
+                      onClick={() => {
+                        setIsModalOpen(true);
+                        setIsGroupDropdownOpen(false);
+                        setIsPlaylistDropdownOpen(false);
+                      }}
+                      className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </ProtectedComponent>
                 </div>
 
                 <ChannelList
@@ -321,9 +372,22 @@ function App() {
           onClose={() => setIsTvPlaylistOpen(false)}
         />
 
+        <UserProfile
+          isOpen={isUserProfileOpen}
+          onClose={() => setIsUserProfileOpen(false)}
+        />
+
         <ToastContainer />
       </div>
     </ToastProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
