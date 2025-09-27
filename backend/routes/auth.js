@@ -49,7 +49,7 @@ router.post('/register', async (req, res) => {
       }
 
       res.json({
-        success: true,
+        authenticated: true,
         user: {
           id: user.id,
           email: user.email,
@@ -81,7 +81,7 @@ router.post('/login', (req, res, next) => {
       }
 
       res.json({
-        success: true,
+        authenticated: true,
         user: {
           id: user.id,
           email: user.email,

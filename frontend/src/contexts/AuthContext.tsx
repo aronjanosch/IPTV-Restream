@@ -36,7 +36,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkSetup = async () => {
     try {
-      const setupResponse = await apiService.request<{ setupRequired: boolean }>('/setup-required', 'GET', import.meta.env.VITE_BACKEND_URL + '/auth');
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+      const setupResponse = await apiService.request<{ setupRequired: boolean }>('/setup-required', 'GET', baseUrl + '/auth');
       setSetupRequired(setupResponse.setupRequired);
       return setupResponse.setupRequired;
     } catch (error) {
@@ -55,7 +56,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      const authResponse = await apiService.request<AuthResponse>('/user', 'GET', import.meta.env.VITE_BACKEND_URL + '/auth');
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+      const authResponse = await apiService.request<AuthResponse>('/user', 'GET', baseUrl + '/auth');
 
       if (authResponse.authenticated && authResponse.user) {
         setUser(authResponse.user);
@@ -75,7 +77,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiService.request<AuthResponse>('/login', 'POST', import.meta.env.VITE_BACKEND_URL + '/auth', {
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+      const response = await apiService.request<AuthResponse>('/login', 'POST', baseUrl + '/auth', {
         email,
         password
       });
@@ -94,7 +97,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (email: string, password: string, name: string) => {
     try {
-      const response = await apiService.request<AuthResponse>('/register', 'POST', import.meta.env.VITE_BACKEND_URL + '/auth', {
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+      const response = await apiService.request<AuthResponse>('/register', 'POST', baseUrl + '/auth', {
         email,
         password,
         name
@@ -115,7 +119,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await apiService.request('/logout', 'POST', import.meta.env.VITE_BACKEND_URL + '/auth');
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+      await apiService.request('/logout', 'POST', baseUrl + '/auth');
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {

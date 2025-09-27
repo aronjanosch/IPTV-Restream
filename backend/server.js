@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const cors = require('cors');
 const dotenv = require('dotenv');
 const { Server } = require('socket.io');
 
@@ -22,6 +23,13 @@ const { requireAdmin, authEnabledOrAuthenticated } = require('./middleware/autho
 dotenv.config();
 
 const app = express();
+
+// CORS configuration
+app.use(cors({
+  origin: ['http://localhost:8080', 'http://localhost:3000'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Session configuration
