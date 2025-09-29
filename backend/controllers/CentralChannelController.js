@@ -5,7 +5,7 @@ const SessionFactory = require('../services/session/SessionFactory');
 const Path = require('path');
 const fs = require('fs');
 
-const STORAGE_PATH = process.env.STORAGE_PATH;
+const STORAGE_PATH = Path.resolve(process.env.STORAGE_PATH || './streams');
 const BACKEND_URL = process.env.BACKEND_URL;
 
 function fetchM3u8(res, targetUrl, headers) {
@@ -63,7 +63,7 @@ module.exports = {
 
         res.set('Access-Control-Allow-Origin', '*');
         if(channel.restream()) {
-            const path = Path.resolve(`${STORAGE_PATH}${channel.id}/${channel.id}.m3u8`);
+            const path = Path.join(STORAGE_PATH, channel.id.toString(), `${channel.id}.m3u8`);
             if (fs.existsSync(path)) {
                 try {
                     const m3u8Data = fs.readFileSync(path, 'utf-8');
@@ -80,7 +80,7 @@ module.exports = {
 
                             // Passe die .ts-Dateipfade an
                             if (line.endsWith('.ts')) {
-                                return `${STORAGE_PATH}${channel.id}/${line}`;
+                                return Path.join(STORAGE_PATH, channel.id.toString(), line);
                             }
 
                             return line;

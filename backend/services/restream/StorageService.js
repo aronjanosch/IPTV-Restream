@@ -1,13 +1,16 @@
 const fs = require('fs');
+const path = require('path');
 
-const STORAGE_PATH = process.env.STORAGE_PATH;
+const STORAGE_PATH = path.resolve(process.env.STORAGE_PATH || './streams');
 
 function createChannelStorage(channelId) {
-    fs.mkdirSync(STORAGE_PATH + channelId);
+    const channelPath = path.join(STORAGE_PATH, channelId.toString());
+    fs.mkdirSync(channelPath, { recursive: true });
 }
 
 function deleteChannelStorage(channelId) {
-    fs.rmSync(STORAGE_PATH + channelId, { recursive: true, force: true  });
+    const channelPath = path.join(STORAGE_PATH, channelId.toString());
+    fs.rmSync(channelPath, { recursive: true, force: true });
 }
 
 
