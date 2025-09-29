@@ -1,10 +1,9 @@
 const { spawn } = require('child_process');
-const path = require('path');
 require('dotenv').config();
 
 let currentFFmpegProcess = null;
 let currentChannelId = null;
-const STORAGE_PATH = path.resolve(process.env.STORAGE_PATH || './streams');
+const STORAGE_PATH = process.env.STORAGE_PATH;
 
 function startFFmpeg(nextChannel) {
     console.log('Starting FFmpeg process with channel:', nextChannel.id);
@@ -32,7 +31,7 @@ function startFFmpeg(nextChannel) {
         '-hls_list_size', '5',
         '-hls_flags', 'delete_segments+program_date_time',
         '-start_number', Math.floor(Date.now() / 1000),
-        path.join(STORAGE_PATH, currentChannelId.toString(), `${currentChannelId}.m3u8`)
+        `${STORAGE_PATH}${currentChannelId}/${currentChannelId}.m3u8`
     ]);
 
     currentFFmpegProcess.stdout.on('data', (data) => {
