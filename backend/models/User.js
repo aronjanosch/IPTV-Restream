@@ -34,7 +34,7 @@ class User {
   // Create a new user
   async create(userData) {
     return new Promise((resolve, reject) => {
-      const { email, password, name, role = 'user', ssoProvider = null, ssoId = null } = userData;
+      const { email, password, name, username = null, avatar = null, role = 'user', ssoProvider = null, ssoId = null } = userData;
 
       // Check if this is the first user (should be admin)
       this.db.get('SELECT COUNT(*) as count FROM users', async (err, row) => {
@@ -49,12 +49,12 @@ class User {
         }
 
         this.db.run(
-          `INSERT INTO users (email, password_hash, name, role, sso_provider, sso_id)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [email, passwordHash, name, userRole, ssoProvider, ssoId],
+          `INSERT INTO users (email, password_hash, name, username, avatar, role, sso_provider, sso_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [email, passwordHash, name, username, avatar, userRole, ssoProvider, ssoId],
           function(err) {
             if (err) return reject(err);
-            resolve({ id: this.lastID, email, name, role: userRole });
+            resolve({ id: this.lastID, email, name, username, avatar, role: userRole });
           }
         );
       });
@@ -140,7 +140,7 @@ class User {
   async getAll() {
     return new Promise((resolve, reject) => {
       this.db.all(
-        'SELECT id, email, name, role, sso_provider, created_at, last_login FROM users ORDER BY created_at DESC',
+        'SELECT id, email, name, username, avatar, role, sso_provider, created_at, last_login FROM users ORDER BY created_at DESC',
         (err, rows) => {
           if (err) return reject(err);
           resolve(rows);

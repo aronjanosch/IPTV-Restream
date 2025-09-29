@@ -49,7 +49,7 @@ function requireRole(role) {
 
 // Check if authentication is enabled
 function authEnabled(req, res, next) {
-  if (process.env.VITE_AUTH_ENABLED !== 'true') {
+  if (process.env.AUTH_ENABLED !== 'true') {
     return next();
   }
 
@@ -58,7 +58,7 @@ function authEnabled(req, res, next) {
 
 // Check if user is authenticated or auth is disabled
 function authEnabledOrAuthenticated(req, res, next) {
-  if (process.env.VITE_AUTH_ENABLED !== 'true') {
+  if (process.env.AUTH_ENABLED !== 'true') {
     return next();
   }
 

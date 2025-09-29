@@ -42,6 +42,8 @@ router.post('/register', async (req, res) => {
       id: user.id,
       email: user.email,
       name: user.name,
+      username: user.username,
+      avatar: user.avatar,
       role: user.role
     }, (err) => {
       if (err) {
@@ -54,6 +56,8 @@ router.post('/register', async (req, res) => {
           id: user.id,
           email: user.email,
           name: user.name,
+          username: user.username,
+          avatar: user.avatar,
           role: user.role
         }
       });
@@ -86,6 +90,8 @@ router.post('/login', (req, res, next) => {
           id: user.id,
           email: user.email,
           name: user.name,
+          username: user.username,
+          avatar: user.avatar,
           role: user.role
         }
       });
@@ -133,6 +139,8 @@ router.get('/user', (req, res) => {
         id: req.user.id,
         email: req.user.email,
         name: req.user.name,
+        username: req.user.username,
+        avatar: req.user.avatar,
         role: req.user.role
       }
     });
@@ -166,6 +174,90 @@ router.put('/users/:id/role', requireAuth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error updating user role:', error);
     res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
+// Get OIDC configuration (admin only)
+router.get('/oidc/config', requireAuth, requireAdmin, (req, res) => {
+  res.json({
+    enabled: process.env.OIDC_ENABLED === 'true',
+    issuerUrl: process.env.OIDC_ISSUER_URL || '',
+    clientId: process.env.OIDC_CLIENT_ID || '',
+    callbackUrl: process.env.OIDC_CALLBACK_URL || `${req.protocol}://${req.get('host')}/auth/sso/callback`,
+    autoProvision: process.env.OIDC_AUTO_PROVISION === 'true',
+    roleMapping: process.env.OIDC_ROLE_MAPPING === 'true'
+  });
+});
+
+// Update OIDC configuration (admin only)
+router.post('/oidc/config', requireAuth, requireAdmin, (req, res) => {
+  try {
+    const { enabled, issuerUrl, clientId, clientSecret, autoProvision, roleMapping } = req.body;
+
+    // Update environment variables (note: requires server restart to take full effect)
+    if (enabled !== undefined) process.env.OIDC_ENABLED = enabled ? 'true' : 'false';
+    if (issuerUrl) process.env.OIDC_ISSUER_URL = issuerUrl;
+    if (clientId) process.env.OIDC_CLIENT_ID = clientId;
+    if (clientSecret) process.env.OIDC_CLIENT_SECRET = clientSecret;
+    if (autoProvision !== undefined) process.env.OIDC_AUTO_PROVISION = autoProvision ? 'true' : 'false';
+    if (roleMapping !== undefined) process.env.OIDC_ROLE_MAPPING = roleMapping ? 'true' : 'false';
+
+    // Set callback URL
+    process.env.OIDC_CALLBACK_URL = `${req.protocol}://${req.get('host')}/auth/sso/callback`;
+
+    res.json({
+      success: true,
+      message: 'OIDC configuration updated. Server restart required for changes to take full effect.',
+      restartRequired: true
+    });
+  } catch (error) {
+    console.error('Error updating OIDC config:', error);
+    res.status(500).json({ error: 'Failed to update OIDC configuration' });
+  }
+});
+
+// Test OIDC configuration (admin only)
+router.post('/oidc/test', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { issuerUrl } = req.body;
+
+    if (!issuerUrl) {
+      return res.status(400).json({ error: 'Issuer URL is required' });
+    }
+
+    // Test OIDC endpoint availability
+    const fetch = require('node-fetch');
+    const wellKnownUrl = issuerUrl.endsWith('/')
+      ? `${issuerUrl}.well-known/openid_configuration`
+      : `${issuerUrl}/.well-known/openid_configuration`;
+
+    const response = await fetch(wellKnownUrl, { timeout: 5000 });
+
+    if (!response.ok) {
+      return res.status(400).json({
+        error: 'OIDC provider not reachable or invalid configuration',
+        details: `HTTP ${response.status}: ${response.statusText}`
+      });
+    }
+
+    const config = await response.json();
+
+    res.json({
+      success: true,
+      message: 'OIDC provider is reachable and properly configured',
+      providerInfo: {
+        issuer: config.issuer,
+        authorizationEndpoint: config.authorization_endpoint,
+        tokenEndpoint: config.token_endpoint,
+        userInfoEndpoint: config.userinfo_endpoint
+      }
+    });
+  } catch (error) {
+    console.error('Error testing OIDC config:', error);
+    res.status(500).json({
+      error: 'Failed to test OIDC configuration',
+      details: error.message
+    });
   }
 });
 

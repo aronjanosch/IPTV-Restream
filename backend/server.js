@@ -62,10 +62,10 @@ apiRouter.post('/', requireAdmin, channelController.addChannel);
 app.use('/api/channels', apiRouter);
 
 const proxyRouter = express.Router();
-proxyRouter.get('/channel', proxyController.channel);
-proxyRouter.get('/segment', proxyController.segment);
-proxyRouter.get('/key', proxyController.key);
-proxyRouter.get('/current', centralChannelController.currentChannel);
+proxyRouter.get('/channel', authEnabledOrAuthenticated, proxyController.channel);
+proxyRouter.get('/segment', authEnabledOrAuthenticated, proxyController.segment);
+proxyRouter.get('/key', authEnabledOrAuthenticated, proxyController.key);
+proxyRouter.get('/current', authEnabledOrAuthenticated, centralChannelController.currentChannel);
 app.use('/proxy', proxyRouter);
 
 
@@ -81,7 +81,12 @@ const server = app.listen(PORT, async () => {
 
 
 // Web Sockets
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:8080', 'http://localhost:3000'],
+    credentials: true
+  }
+});
 
 const connectedUsers = {};
 
