@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, UserIcon } from 'lucide-react';
+import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, UserIcon, Shield } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import ChannelList from './components/ChannelList';
 import Chat from './components/chat/Chat';
@@ -16,6 +16,7 @@ import AuthPage from './components/auth/AuthPage';
 import AdminSetupWizard from './components/auth/AdminSetupWizard';
 import UserProfile from './components/auth/UserProfile';
 import ProtectedComponent from './components/ProtectedComponent';
+import UserManagement from './components/admin/UserManagement';
 
 function AppContent() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -24,6 +25,7 @@ function AppContent() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTvPlaylistOpen, setIsTvPlaylistOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [syncEnabled, setSyncEnabled] = useState(() => {
     const savedValue = localStorage.getItem('syncEnabled');
     return savedValue !== null ? JSON.parse(savedValue) : false;
@@ -204,6 +206,17 @@ function AppContent() {
               >
                 <Tv2 className="w-6 h-6 text-blue-500" />
               </button>
+
+              <ProtectedComponent requireAdmin={true}>
+                <button
+                  onClick={() => setIsUserManagementOpen(true)}
+                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                  title="User Management"
+                >
+                  <Shield className="w-6 h-6 text-orange-500" />
+                </button>
+              </ProtectedComponent>
+
               <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
@@ -375,6 +388,11 @@ function AppContent() {
         <UserProfile
           isOpen={isUserProfileOpen}
           onClose={() => setIsUserProfileOpen(false)}
+        />
+
+        <UserManagement
+          isOpen={isUserManagementOpen}
+          onClose={() => setIsUserManagementOpen(false)}
         />
 
         <ToastContainer />

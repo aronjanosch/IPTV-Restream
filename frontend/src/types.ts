@@ -2,6 +2,8 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  username?: string;
+  avatar?: string;
   role: 'admin' | 'user';
 }
 
@@ -10,19 +12,6 @@ export interface AuthResponse {
   user?: User;
 }
 
-export interface RandomUser {
-  results: {
-    name: {
-      first: string;
-      last: string;
-    },
-    picture: {
-      large: string;
-      medium: string;
-      thumbnail: string;
-    }
-  }[];
-};
 
 export type ChannelMode = 'direct' | 'proxy' | 'restream';
 

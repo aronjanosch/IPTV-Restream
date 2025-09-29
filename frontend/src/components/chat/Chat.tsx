@@ -1,31 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
 import socketService from '../../services/SocketService';
-import { Channel, ChatMessage, RandomUser, User } from '../../types';
+import { Channel, ChatMessage, User } from '../../types';
 import SendMessage from './SendMessage';
 import SystemMessage from './SystemMessage';
 import ReceivedMessage from './ReceivedMessage';
-import apiService from '../../services/ApiService';
+import { useAuth } from '../../contexts/AuthContext';
 
 function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [user, setUser] = useState<User>();
+  const { user: authUser } = useAuth();
+
+  // Create a default avatar for the user
+  const getDefaultAvatar = (name: string) => {
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+    return `data:image/svg+xml;base64,${btoa(`
+      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" fill="#3B82F6" rx="16"/>
+        <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">${initials}</text>
+      </svg>
+    `)}`;
+  };
+
+  const user: User | undefined = authUser ? {
+    ...authUser,
+    avatar: authUser.avatar || getDefaultAvatar(authUser.name)
+  } : undefined;
 
   useEffect(() => {
-
-    // Use your own auth service instead of using randomized user
-    apiService
-      .request<RandomUser>('/api', 'GET', 'https://randomuser.me')
-      .then((randomUser) => {
-        const name = randomUser.results[0].name;
-        const picture = randomUser.results[0].picture;
-        setUser({
-          name: `${name.first} ${name.last}`,
-          avatar: picture.medium,
-        });
-      })
-      .catch((error) => console.error('Error fetching random user:', error));
 
     const messageListener = (message: ChatMessage) => {
       setMessages((prevMessages) => [...prevMessages, message]);

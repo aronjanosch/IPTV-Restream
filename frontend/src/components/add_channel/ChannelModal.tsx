@@ -5,6 +5,7 @@ import { CustomHeader, Channel, ChannelMode } from '../../types';
 import CustomHeaderInput from './CustomHeaderInput';
 import { ToastContext } from '../notifications/ToastContext';
 import { ModeTooltipContent, Tooltip } from '../Tooltip';
+import ConfirmationModal from '../ConfirmationModal';
 
 interface ChannelModalProps {
   onClose: () => void;
@@ -26,6 +27,8 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [playlistText, setPlaylistText] = useState('');
   const [playlistUpdate, setPlaylistUpdate] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { addToast } = useContext(ToastContext);
 
@@ -153,20 +156,37 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
     onClose();
   };
 
-  const handleDelete = () => {
-    if (channel) {
-      if (type === 'channel') {
-        socketService.deleteChannel(channel.id);
-      } else if (type === 'playlist') {
-        socketService.deletePlaylist(channel.playlist);
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      if (channel) {
+        if (type === 'channel') {
+          socketService.deleteChannel(channel.id);
+        } else if (type === 'playlist') {
+          socketService.deletePlaylist(channel.playlist);
+        }
       }
+      addToast({
+        type: 'success',
+        title: `${type === 'channel' ? 'Channel' : 'Playlist'} deleted successfully`,
+        duration: 3000,
+      });
+      setShowDeleteConfirmation(false);
+      onClose();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      addToast({
+        type: 'error',
+        title: `Failed to delete ${type === 'channel' ? 'channel' : 'playlist'}`,
+        duration: 3000,
+      });
+    } finally {
+      setDeleting(false);
     }
-    addToast({
-      type: 'error',
-      title: `${type} deleted`,
-      duration: 3000,
-    });
-    onClose();
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteConfirmation(true);
   };
 
   return (
@@ -477,7 +497,7 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
             {isEditMode && (
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={confirmDelete}
                 className="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
                 Delete
@@ -499,6 +519,17 @@ function ChannelModal({ onClose, channel }: ChannelModalProps) {
           </div>
         </form>
       </div>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={() => setShowDeleteConfirmation(false)}
+        onConfirm={handleDelete}
+        title={`Delete ${type === 'channel' ? 'Channel' : 'Playlist'}`}
+        message={`Are you sure you want to delete "${name || 'this item'}"? This action cannot be undone.`}
+        confirmText="Delete"
+        loading={deleting}
+        type="danger"
+      />
     </div>
   );
 }
