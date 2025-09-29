@@ -65,11 +65,20 @@ function authEnabledOrAuthenticated(req, res, next) {
   return requireAuth(req, res, next);
 }
 
+// Allow public access to streaming endpoints when auth is enabled
+// HLS.js and other video players can't send session cookies with their requests
+function allowPublicStreamAccess(req, res, next) {
+  // Always allow public access to streaming endpoints
+  // This is necessary because video players (HLS.js) can't send authentication cookies
+  return next();
+}
+
 module.exports = {
   requireAuth,
   requireAdmin,
   optionalAuth,
   requireRole,
   authEnabled,
-  authEnabledOrAuthenticated
+  authEnabledOrAuthenticated,
+  allowPublicStreamAccess
 };

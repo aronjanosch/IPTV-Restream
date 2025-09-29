@@ -18,7 +18,7 @@ const PlaylistUpdater = require('./services/PlaylistUpdater');
 // Authentication
 const passport = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
-const { requireAdmin, authEnabledOrAuthenticated } = require('./middleware/authorize');
+const { requireAdmin, authEnabledOrAuthenticated, allowPublicStreamAccess } = require('./middleware/authorize');
 
 dotenv.config();
 
@@ -62,12 +62,16 @@ apiRouter.post('/', requireAdmin, channelController.addChannel);
 app.use('/api/channels', apiRouter);
 
 const proxyRouter = express.Router();
-proxyRouter.get('/channel', authEnabledOrAuthenticated, proxyController.channel);
-proxyRouter.get('/segment', authEnabledOrAuthenticated, proxyController.segment);
-proxyRouter.get('/key', authEnabledOrAuthenticated, proxyController.key);
-proxyRouter.get('/current', authEnabledOrAuthenticated, centralChannelController.currentChannel);
+proxyRouter.get('/channel', allowPublicStreamAccess, proxyController.channel);
+proxyRouter.get('/segment', allowPublicStreamAccess, proxyController.segment);
+proxyRouter.get('/key', allowPublicStreamAccess, proxyController.key);
+proxyRouter.get('/current', allowPublicStreamAccess, centralChannelController.currentChannel);
 app.use('/proxy', proxyRouter);
 
+// Static stream files - public access for video players
+const path = require('path');
+const STORAGE_PATH = path.resolve(process.env.STORAGE_PATH || './streams');
+app.use('/streams', allowPublicStreamAccess, express.static(STORAGE_PATH));
 
 const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, async () => {
