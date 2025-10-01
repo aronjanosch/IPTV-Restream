@@ -3,7 +3,7 @@ const path = require('path');
 const Channel = require('../models/Channel');
 const { clear } = require('console');
 
-const storageFilePath = path.resolve('/channels/channels.json');
+const storageFilePath = path.resolve('./data/channels/channels.json');
 
 module.exports = {
     load() {
@@ -48,6 +48,12 @@ module.exports = {
         // ];
 
 
+        // Ensure the directory exists
+        const storageDir = path.dirname(storageFilePath);
+        if (!fs.existsSync(storageDir)) {
+            fs.mkdirSync(storageDir, { recursive: true });
+        }
+
         if (fs.existsSync(storageFilePath)) {
             try {
                 const data = fs.readFileSync(storageFilePath, 'utf-8');
@@ -59,6 +65,8 @@ module.exports = {
                 return defaultChannels;
             }
         }
+
+        console.log('No channels.json found, creating default channels...');
         this.save(defaultChannels);
         return defaultChannels;
     },
