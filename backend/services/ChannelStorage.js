@@ -2,8 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const Channel = require('../models/Channel');
 const { clear } = require('console');
+require('dotenv').config();
 
-const storageFilePath = path.resolve('/channels/channels.json');
+const storageFilePath = path.resolve(process.env.CHANNELS_JSON_PATH || '/channels/channels.json');
 
 module.exports = {
     load() {
@@ -65,6 +66,10 @@ module.exports = {
 
     save(data) {
         try {
+			 const storageDir = path.dirname(storageFilePath);
+			 if (!fs.existsSync(storageDir)) {
+				 fs.mkdirSync(storageDir, { recursive: true });
+			 }
             fs.writeFile(storageFilePath, JSON.stringify(data, null, 2), { encoding: 'utf-8' }, (err) => err && console.error(err));
             console.log('Data saved successfully.');
         } catch (err) {
