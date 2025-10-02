@@ -25,6 +25,7 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
       const hls = new Hls({
         autoStartLoad: syncEnabled ? false : true,
         liveDurationInfinity: true,
+        liveSyncDurationCount: 3,
         //debug: true,
         manifestLoadPolicy: {
           default: {
@@ -110,11 +111,8 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
               editToast(toastStartId, {duration: (1 + targetDelay - delay) * 1000});
               toastDurationSet = true;
             }
-      
-            // Reload manifest
-            setTimeout(() => {
-              hls.loadSource(import.meta.env.VITE_BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8");
-            }, 1000); 
+
+            // HLS.js will automatically reload the manifest at appropriate intervals
           }
         } else {
           hls.startLoad();
