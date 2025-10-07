@@ -16,9 +16,7 @@
  A simple IPTV `restream` and `synchronization` (watch2gether) application with `web` frontend. Share your iptv playlist and watch it together with your friends.
 
 Actively in devlopment and open for your ideas! <br>
-[TEST HERE](https://ante.is-a.dev) (Only for testing, the used channels are free (not reliable) and zhe server's distance may cause longer loading times. **Try locally** if the test server is down.)
-
-[![Test Server Status](https://github.com/antebrl/cron-jobs/actions/workflows/daily-channel-clear.yml/badge.svg)](https://ante.is-a.dev)
+Easily test it locally using Docker Compose!
 
 > [!IMPORTANT]
 > If you're using an **Xtream Codes** playlist (format: `/get.php?username=xxx&password=xxx&type=xxx&output=xxx`), try the following options:
