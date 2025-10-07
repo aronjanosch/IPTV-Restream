@@ -5,8 +5,6 @@ const Playlist = require("../models/Playlist");
 const authService = require("../services/auth/AuthService");
 require("dotenv").config();
 
-const ADMIN_ENABLED = process.env.ADMIN_ENABLED === "true";
-
 async function handleAddPlaylist(
   { playlist, playlistName, mode, playlistUpdate, headers },
   io,

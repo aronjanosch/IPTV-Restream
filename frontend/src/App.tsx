@@ -34,7 +34,7 @@ function AppContent() {
   const [isPlaylistDropdownOpen, setIsPlaylistDropdownOpen] = useState(false);
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
-  const { isAdmin, isAdminEnabled, setIsAdminEnabled } = useAdmin();
+  const { isAdmin, isAdminEnabled, setIsAdminEnabled, channelSelectRequiresAdmin, setChannelSelectRequiresAdmin } = useAdmin();
   const { addToast } = useContext(ToastContext);
 
   // Get unique playlists from channels
@@ -73,8 +73,11 @@ function AppContent() {
   useEffect(() => {
     // Check if admin mode is enabled on the server
     apiService
-      .request<{ enabled: boolean }>('/auth/admin-status', 'GET')
-      .then((data) => setIsAdminEnabled(data.enabled))
+      .request<{ enabled: boolean; channelSelectionRequiresAdmin: boolean }>('/auth/admin-status', 'GET')
+      .then((data) => {
+        setIsAdminEnabled(data.enabled);
+        setChannelSelectRequiresAdmin(data.channelSelectionRequiresAdmin);
+      })
       .catch((error) => console.error('Error checking admin status:', error));
 
     apiService
@@ -345,6 +348,13 @@ function AppContent() {
                 selectedChannel={selectedChannel}
                 setSearchQuery={setSearchQuery}
                 onEditChannel={handleEditChannel}
+                onChannelSelectCheckPermission={() => {
+                  if (isAdminEnabled && channelSelectRequiresAdmin && !isAdmin) {
+                    setIsAdminModalOpen(true);
+                    return false;
+                  }
+                  return true;
+                }}
               />
             </div>
 

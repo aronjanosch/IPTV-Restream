@@ -28,6 +28,15 @@ module.exports = (io, socket) => {
 
   socket.on("set-current-channel", async (id) => {
     try {
+      if (
+        authService.isAdminEnabled() &&
+        authService.channelSelectionRequiresAdmin() &&
+        !socket.user?.isAdmin
+      ) {
+        return socket.emit("app-error", {
+          message: "Admin access required to switch channel",
+        });
+      }
       const nextChannel = await ChannelService.setCurrentChannel(id);
       io.emit("channel-selected", nextChannel); // Broadcast to all clients
     } catch (err) {

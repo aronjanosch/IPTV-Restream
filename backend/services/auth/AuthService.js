@@ -8,6 +8,8 @@ require("dotenv").config();
 class AuthService {
   constructor() {
     this.ADMIN_ENABLED = process.env.ADMIN_ENABLED === "true";
+    this.CHANNEL_SELECTION_REQUIRES_ADMIN =
+      process.env.CHANNEL_SELECTION_REQUIRES_ADMIN === "true";
     this.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
     this.JWT_EXPIRY = process.env.JWT_EXPIRY || "24h";
 
@@ -27,6 +29,13 @@ class AuthService {
       .createHash("sha256")
       .update(this.ADMIN_PASSWORD || "")
       .digest("hex");
+  }
+  /**
+   * Check if channel selection needs admin
+   * @returns {boolean}
+   */
+  channelSelectionRequiresAdmin() {
+    return this.CHANNEL_SELECTION_REQUIRES_ADMIN && this.ADMIN_ENABLED;
   }
 
   /**

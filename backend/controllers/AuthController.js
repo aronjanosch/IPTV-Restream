@@ -30,6 +30,7 @@ module.exports = {
   checkAdminStatus(req, res) {
     res.json({
       enabled: authService.isAdminEnabled(),
+      channelSelectionRequiresAdmin: authService.channelSelectionRequiresAdmin(),
     });
   },
 

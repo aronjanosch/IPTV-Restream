@@ -7,6 +7,7 @@ interface ChannelListProps {
   selectedChannel: Channel | null;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
   onEditChannel: (channel: Channel) => void;
+  onChannelSelectCheckPermission: () => boolean;
 }
 
 function ChannelList({
@@ -14,10 +15,13 @@ function ChannelList({
   selectedChannel,
   setSearchQuery,
   onEditChannel,
+  onChannelSelectCheckPermission,
 }: ChannelListProps) {
+
   const onSelectChannel = (channel: Channel) => {
     setSearchQuery("");
     if (channel.id === selectedChannel?.id) return;
+    if (!onChannelSelectCheckPermission()) return;
     socketService.setCurrentChannel(channel.id);
   };
 
