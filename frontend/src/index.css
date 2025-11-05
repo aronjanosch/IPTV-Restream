@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+.scroll-container::-webkit-scrollbar {
+    height: 10px; /* Höhe für horizontale Scrollbar */
+    width: 15px;
+  }
+  
+  /* Scrollbar-Thumb (Daumen) */
+  .scroll-container::-webkit-scrollbar-thumb {
+    background-color: transparent; /* Transparenter Hintergrund */
+    border: 1.5px solid #3b83f663; /* Blaue Umrandung */
+    border-radius: 10px; 
+    transition: border-color 0.3s ease; /* Sanfter Übergang für Hover */
+  }
+  
+  /* Scrollbar-Thumb Hover */
+  .scroll-container::-webkit-scrollbar-thumb:hover {
+    border-color: #2563eb; /* Dunkleres Blau beim Hover */
+  }
+  
+  /* Scrollbar Track */
+  .scroll-container::-webkit-scrollbar-track {
+    background-color: #2d3748; /* Dunkelgrauer Hintergrund */
+    border-radius: 10px; /* Runde Ecken */
+    margin-block: 10px;
+  }
+
+  .vertical-scroll-container {
+    margin-right: 8px;
+  }
+
+  video::-webkit-media-controls-timeline,
+  video::-webkit-media-controls-seek-back-button,
+  video::-webkit-media-controls-seek-forward-button {
+      display: none;
+  }
