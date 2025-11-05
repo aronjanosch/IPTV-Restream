@@ -20,18 +20,24 @@ function startFFmpeg(nextChannel) {
 
     currentFFmpegProcess = spawn('ffmpeg', [
         '-loglevel', 'error',
+        '-hwaccel', 'auto',  // Auto-detect and use hardware acceleration if available
         '-headers', headers.map(header => `${header.key}: ${header.value}`).join('\r\n'),
         '-reconnect', '1',
         '-reconnect_at_eof', '1',
         '-reconnect_streamed', '1',
         '-reconnect_delay_max', '2',
         '-i', channelUrl,
-        '-c', 'copy',
+        '-c:v', 'copy',  // Copy video codec (no re-encoding)
+        '-c:a', 'copy',  // Copy audio codec (no re-encoding)
         '-f', 'hls',
-        '-hls_time', '6',
-        '-hls_list_size', '5',
-        '-hls_flags', 'delete_segments+program_date_time',
+        '-hls_time', '2',  // Reduced to 2s for lower latency (was 6s)
+        '-hls_list_size', '10',  // Increased buffer to 20 seconds (was 30s with 6s segments)
+        '-hls_flags', 'delete_segments+append_list+omit_endlist+program_date_time',
+        '-hls_segment_type', 'mpegts',  // Explicitly use MPEG-TS for better compatibility
+        '-hls_segment_filename', `${STORAGE_PATH}${currentChannelId}/${currentChannelId}_%d.ts`,
         '-start_number', Math.floor(Date.now() / 1000),
+        '-fflags', '+genpts',  // Generate presentation timestamps for better sync
+        '-threads', '2',  // Limit thread usage to prevent CPU hogging
         `${STORAGE_PATH}${currentChannelId}/${currentChannelId}.m3u8`
     ]);
 
