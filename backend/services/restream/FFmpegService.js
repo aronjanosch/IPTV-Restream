@@ -3,22 +3,23 @@ require('dotenv').config();
 
 let currentFFmpegProcess = null;
 let currentChannelId = null;
+let currentChannel = null;
+let restartCount = 0;
+const MAX_RESTART_ATTEMPTS = 5;
 const STORAGE_PATH = process.env.STORAGE_PATH;
 
 function startFFmpeg(nextChannel) {
     console.log('Starting FFmpeg process with channel:', nextChannel.id);
-    // if (currentFFmpegProcess) {
-    //     console.log('Gracefully terminate previous ffmpeg-Prozess...');
-    //     await stopFFmpeg();
-    // }
 
     let channelUrl = nextChannel.sessionUrl ? nextChannel.sessionUrl : nextChannel.url;
 
     currentChannelId = nextChannel.id;
+    currentChannel = nextChannel;
     const headers = nextChannel.headers;
 
 
     currentFFmpegProcess = spawn('ffmpeg', [
+        '-loglevel', 'error',
         '-headers', headers.map(header => `${header.key}: ${header.value}`).join('\r\n'),
         '-reconnect', '1',
         '-reconnect_at_eof', '1',
@@ -35,41 +36,68 @@ function startFFmpeg(nextChannel) {
     ]);
 
     currentFFmpegProcess.stdout.on('data', (data) => {
-        console.log(`stdout: ${data}`);
+        console.log(`FFmpeg stdout: ${data}`);
     });
 
     currentFFmpegProcess.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
+        console.error(`FFmpeg error: ${data}`);
     });
 
-    // currentFFmpegProcess.on('close', (code) => {
-    //     console.log(`ffmpeg-Process terminated with code: ${code}`);
+    currentFFmpegProcess.on('close', (code) => {
+        console.log(`FFmpeg process terminated with code: ${code}`);
+        const channelToRestart = currentChannel;
+        currentFFmpegProcess = null;
 
-    //     // currentFFmpegProcess = null;
-    //     // //Restart if crashed
-    //     // if (code !== null && code !== 255) {
-    //     //     console.log(`Restarting FFmpeg process with channel: ${nextChannel.id}`);
-    //     //     //wait 1 second before restarting
-    //     //     setTimeout(() => startFFmpeg(nextChannel), 2000);
-    //     // }
-    // });
+        // Don't restart if explicitly stopped (code 255 or null means SIGTERM/SIGKILL)
+        // Restart on crashes (non-zero exit codes) with exponential backoff
+        if (code !== null && code !== 0 && code !== 255 && restartCount < MAX_RESTART_ATTEMPTS) {
+            restartCount++;
+            const delay = Math.min(1000 * Math.pow(2, restartCount - 1), 30000); // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+            console.log(`FFmpeg crashed (attempt ${restartCount}/${MAX_RESTART_ATTEMPTS}). Restarting in ${delay}ms...`);
+            setTimeout(() => startFFmpeg(channelToRestart), delay);
+        } else if (restartCount >= MAX_RESTART_ATTEMPTS) {
+            console.error(`FFmpeg failed after ${MAX_RESTART_ATTEMPTS} restart attempts. Giving up.`);
+            restartCount = 0;
+        } else {
+            // Clean exit or intentional stop - reset restart counter
+            restartCount = 0;
+        }
+    });
+
+    // Reset restart counter on successful start
+    restartCount = 0;
 }
 
 function stopFFmpeg() {
     return new Promise((resolve, reject) => {
         if (currentFFmpegProcess) {
-            console.log('Gracefully terminate ffmpeg-Process...');
-            
+            console.log('Gracefully terminating FFmpeg process...');
+
+            let isResolved = false;
+            const timeout = setTimeout(() => {
+                if (!isResolved && currentFFmpegProcess) {
+                    console.warn('FFmpeg did not respond to SIGTERM within 5s, forcing with SIGKILL...');
+                    currentFFmpegProcess.kill('SIGKILL');
+                    currentFFmpegProcess = null;
+                    isResolved = true;
+                    resolve();
+                }
+            }, 5000); // 5 second timeout
+
             currentFFmpegProcess.on('close', (code) => {
-                console.log(`ffmpeg-Process terminated with code: ${code}`);
-                currentFFmpegProcess = null;
-                resolve(); 
+                if (!isResolved) {
+                    clearTimeout(timeout);
+                    console.log(`FFmpeg process terminated with code: ${code}`);
+                    currentFFmpegProcess = null;
+                    isResolved = true;
+                    resolve();
+                }
             });
 
             currentFFmpegProcess.kill('SIGTERM');
         } else {
-            console.log('No ffmpeg process is running.');
-            resolve(); 
+            console.log('No FFmpeg process is running.');
+            resolve();
         }
     });
 }

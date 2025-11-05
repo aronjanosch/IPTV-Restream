@@ -64,7 +64,7 @@ class ChannelService {
         if (this.currentChannel !== nextChannel) {
             if (nextChannel.restream()) {
                 streamController.stop(this.currentChannel);
-                storageService.deleteChannelStorage(nextChannel.id);
+                // No need to delete nextChannel storage - createChannelStorage() is now idempotent
                 await streamController.start(nextChannel);
             } else {
                 streamController.stop(this.currentChannel);
