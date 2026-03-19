@@ -115,7 +115,11 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const PORT = 5000;
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err);
+});
+
+const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, async () => {
   console.log(`Server listening on Port ${PORT}`);
   // Don't automatically start streaming - wait for viewers to connect

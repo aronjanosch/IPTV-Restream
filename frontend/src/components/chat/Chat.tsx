@@ -1,31 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
 import socketService from '../../services/SocketService';
-import { Channel, ChatMessage, RandomUser, User } from '../../types';
+import { Channel, ChatMessage, User } from '../../types';
 import SendMessage from './SendMessage';
 import SystemMessage from './SystemMessage';
 import ReceivedMessage from './ReceivedMessage';
-import apiService from '../../services/ApiService';
+
+const AVATAR_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+
+function generateAvatar(name: string): string {
+  const color = AVATAR_COLORS[name.charCodeAt(name.length - 1) % AVATAR_COLORS.length];
+  const initial = name.charAt(0).toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="${color}"/><text x="16" y="21" text-anchor="middle" font-size="14" font-family="sans-serif" fill="white" font-weight="bold">${initial}</text></svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
+function generateUser(): User {
+  const num = Math.floor(Math.random() * 9000) + 1000;
+  const name = `user${num}`;
+  return { name, avatar: generateAvatar(name) };
+}
 
 function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [user, setUser] = useState<User>();
+  const [user] = useState<User>(generateUser);
 
   useEffect(() => {
-
-    // Use your own auth service instead of using randomized user
-    apiService
-      .request<RandomUser>('/api', 'GET', 'https://randomuser.me')
-      .then((randomUser) => {
-        const name = randomUser.results[0].name;
-        const picture = randomUser.results[0].picture;
-        setUser({
-          name: `${name.first} ${name.last}`,
-          avatar: picture.medium,
-        });
-      })
-      .catch((error) => console.error('Error fetching random user:', error));
 
     const messageListener = (message: ChatMessage) => {
       setMessages((prevMessages) => [...prevMessages, message]);

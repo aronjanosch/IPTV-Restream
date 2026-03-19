@@ -1,22 +1,7 @@
-// Not used
 export interface User {
   name: string;
   avatar: string;
 }
-
-export interface RandomUser {
-  results: {
-    name: {
-      first: string;
-      last: string;
-    },
-    picture: {
-      large: string;
-      medium: string;
-      thumbnail: string;
-    }
-  }[];
-};
 
 export type ChannelMode = 'direct' | 'proxy' | 'restream';
 
