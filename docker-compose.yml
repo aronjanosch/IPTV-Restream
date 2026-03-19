@@ -23,6 +23,7 @@ services:
       ADMIN_ENABLED: "true"
       ADMIN_PASSWORD: "your_secure_password"
       JWT_SECRET: "change_this_to_a_secure_random_string"
+      STREAM_PASSWORD: "change_this_to_a_stream_password"
       # Set if behind a reverse proxy and auto-detection fails
       #BACKEND_URL: https://iptv.yourdomain.com
 

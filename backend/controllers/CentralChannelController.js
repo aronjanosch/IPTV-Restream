@@ -1,5 +1,6 @@
 const { Readable } = require('stream');
 const ChannelService = require('../services/ChannelService');
+const HttpViewerService = require('../services/HttpViewerService');
 const ProxyHelperService = require('../services/proxy/ProxyHelperService');
 const Path = require('path');
 const fs = require('fs');
@@ -51,6 +52,8 @@ async function fetchM3u8(res, targetUrl, headers) {
 
 module.exports = {
     async currentChannel(req, res) {
+        const clientIp = req.ip || req.connection.remoteAddress;
+        HttpViewerService.touch(clientIp);
 
         const channel = ChannelService.getCurrentChannel();
 

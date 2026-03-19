@@ -2,28 +2,27 @@ const jwt = require('jsonwebtoken');
 
 const basicAuth = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Basic ')) {
-        // No Basic Auth provided, continue without authentication
         return next();
     }
-    
+
     try {
         const base64Credentials = authHeader.slice('Basic '.length);
         const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
         const [username, password] = credentials.split(':');
-        
-        // Check against admin credentials
+
         const adminPassword = process.env.ADMIN_PASSWORD;
+        const streamPassword = process.env.STREAM_PASSWORD;
         const jwtSecret = process.env.JWT_SECRET;
-        
-        // Method 1: Check admin username/password
-        if (username === 'admin' && password === adminPassword) {
+
+        // Admin username + password
+        if (username === 'admin' && adminPassword && password === adminPassword) {
             req.basicAuthUser = { username: 'admin', isAdmin: true };
             return next();
         }
-        
-        // Method 2: Try to verify password as JWT token
+
+        // Admin username + JWT token
         if (jwtSecret) {
             try {
                 const decoded = jwt.verify(password, jwtSecret);
@@ -32,17 +31,21 @@ const basicAuth = (req, res, next) => {
                     return next();
                 }
             } catch (jwtError) {
-                // JWT verification failed, continue to other methods
+                // JWT verification failed
             }
         }
-        
-        // Method 3: Accept any credentials for now (temporary for testing)
-        // TODO: Implement proper user authentication
-        req.basicAuthUser = { username: username, isAdmin: false };
+
+        // Stream-only access via STREAM_PASSWORD
+        if (username === 'stream' && streamPassword && password === streamPassword) {
+            req.basicAuthUser = { username: 'stream', isAdmin: false };
+            return next();
+        }
+
+        // Invalid credentials — mark as unauthenticated but let the next
+        // middleware decide whether to block or allow
         return next();
-        
+
     } catch (error) {
-        // Malformed auth header
         res.set('WWW-Authenticate', 'Basic realm="IPTV StreamHub"');
         return res.status(401).json({ error: 'Invalid authorization header' });
     }

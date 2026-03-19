@@ -52,6 +52,7 @@ apiRouter.post('/', authController.verifyToken, channelController.addChannel);
 app.use('/api/channels', apiRouter);
 
 const basicAuth = require('./middleware/basicAuth');
+const requireStreamAuth = require('./middleware/requireStreamAuth');
 const path = require('path');
 const fs = require('fs');
 
@@ -63,7 +64,7 @@ proxyRouter.use(basicAuth);
 proxyRouter.get('/channel', proxyController.channel);
 proxyRouter.get('/segment', proxyController.segment);
 proxyRouter.get('/key', proxyController.key);
-proxyRouter.get('/current', centralChannelController.currentChannel);
+proxyRouter.get('/current', requireStreamAuth, centralChannelController.currentChannel);
 app.use('/proxy', proxyRouter);
 
 // Streams route with optional Basic Auth support
