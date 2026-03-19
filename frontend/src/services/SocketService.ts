@@ -41,7 +41,7 @@ class SocketService {
     }
 
     // Connect with auth token if available
-    this.socket = io(import.meta.env.VITE_BACKEND_URL, {
+    this.socket = io(import.meta.env.VITE_BACKEND_URL || undefined, {
       auth: this.token ? { token: this.token } : undefined,
     });
 

@@ -4,6 +4,8 @@ import { Channel, ChannelMode } from '../types';
 import { ToastContext } from './notifications/ToastContext';
 import socketService from '../services/SocketService';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
+
 interface VideoPlayerProps {
   channel: Channel | null;
   syncEnabled: boolean;
@@ -44,8 +46,8 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
             if (videoElement && channel) {
               const sourceLinks: Record<ChannelMode, string> = {
                 direct: channel.url,
-                proxy: import.meta.env.VITE_BACKEND_URL + '/proxy/channel',
-                restream: import.meta.env.VITE_BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8",
+                proxy: BACKEND_URL + '/proxy/channel',
+                restream: BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8",
               };
               
               // Give the backend a moment to start the stream
@@ -107,8 +109,8 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
 
       const sourceLinks: Record<ChannelMode, string> = {
         direct: channel.url,
-        proxy: import.meta.env.VITE_BACKEND_URL + '/proxy/channel', 
-        restream: import.meta.env.VITE_BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8", 
+        proxy: BACKEND_URL + '/proxy/channel',
+        restream: BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8",
       };    
 
       hlsRef.current = hls;
@@ -166,7 +168,7 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
       
             // Reload manifest
             setTimeout(() => {
-              hls.loadSource(import.meta.env.VITE_BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8");
+              hls.loadSource(BACKEND_URL + '/streams/' + channel.id + "/" + channel.id + ".m3u8");
             }, 1000); 
           }
         } else {

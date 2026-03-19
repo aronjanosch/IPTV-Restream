@@ -1,26 +1,17 @@
 version: "3.9"
 services:
-  iptv_restream_frontend:
+  iptv_restream:
     build:
-      context: ../frontend
+      context: ..
       dockerfile: Dockerfile
       args:
-        # Set this to the server ip/domain, if your backend is deployed on a different server
-        #VITE_BACKEND_URL: http://123.123.123.123:5000
         VITE_STREAM_DELAY: 18
         VITE_STREAM_PROXY_DELAY: 30
-        # Optional settings for synchronization
+        # Optional synchronization tuning
         #VITE_SYNCHRONIZATION_TOLERANCE: 0.8
         #VITE_SYNCHRONIZATION_MAX_DEVIATION: 4
         #VITE_SYNCHRONIZATION_ADJUSTMENT: 0.06
         #VITE_SYNCHRONIZATION_MAX_ADJUSTMENT: 0.16
-    ports:
-      - "3000:80"
-
-  iptv_restream_backend:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "5000:5000"
@@ -29,10 +20,9 @@ services:
       - channels:/channels
     environment:
       STORAGE_PATH: /streams/
-      # If you have problems with the playlist, set the backend url manually here
-      #BACKEND_URL: http://localhost:5000
+      # Set if auto-detection of the public URL fails
+      #BACKEND_URL: https://iptv.yourdomain.com
 
-# Volumes
 volumes:
   streams_data:
     driver: local

@@ -55,6 +55,9 @@ const basicAuth = require('./middleware/basicAuth');
 const path = require('path');
 const fs = require('fs');
 
+// Serve compiled frontend from /public
+app.use(express.static(path.join(__dirname, 'public')));
+
 const proxyRouter = express.Router();
 proxyRouter.use(basicAuth);
 proxyRouter.get('/channel', proxyController.channel);
@@ -107,6 +110,10 @@ streamsRouter.get('/:channelId/:filename', (req, res) => {
 });
 app.use('/streams', streamsRouter);
 
+// SPA fallback — serve index.html for any route not matched above
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 const PORT = 5000;
 const server = app.listen(PORT, async () => {

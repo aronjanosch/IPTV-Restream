@@ -6,7 +6,7 @@ A self-hosted IPTV restreaming application for synchronized group viewing. Suppo
 
 - **Backend**: Node.js 22 / Express / Socket.IO / FFmpeg
 - **Frontend**: React 18 / TypeScript / Vite / HLS.js / Tailwind CSS
-- **Deployment**: Docker Compose — designed for use behind [Nginx Proxy Manager](https://nginxproxymanager.com/)
+- **Deployment**: Single Docker container — designed for use behind [Nginx Proxy Manager](https://nginxproxymanager.com/)
 
 ## Streaming Modes
 
@@ -29,28 +29,15 @@ A self-hosted IPTV restreaming application for synchronized group viewing. Suppo
 docker compose up -d
 ```
 
-Frontend is exposed on port **3000**, backend on port **5000**.
+The app is available on port **5000**. Point your reverse proxy at `localhost:5000`.
 
 ### Nginx Proxy Manager Setup
 
-Create a proxy host pointing to `localhost:3000` and add this to the **Advanced** tab:
-
-```nginx
-location ~* ^/(api|socket\.io|proxy|streams)/ {
-    proxy_pass http://localhost:5000;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
+Create a proxy host for your domain pointing to `localhost:5000`. No advanced config needed — everything (frontend, API, WebSocket, HLS) is served from the same port.
 
 ### Environment Variables
 
-Configure in `docker-compose.yml` before starting:
+Configure in `docker-compose.yml` before building:
 
 | Variable | Default | Description |
 |---|---|---|
@@ -58,19 +45,23 @@ Configure in `docker-compose.yml` before starting:
 | `ADMIN_PASSWORD` | — | Admin login password |
 | `JWT_SECRET` | — | JWT signing secret (change this) |
 | `STORAGE_PATH` | `/streams/` | HLS segment output path (tmpfs) |
-| `BACKEND_URL` | auto-detected | Set explicitly if behind a reverse proxy |
-| `VITE_STREAM_DELAY` | `18` | Restream sync delay in seconds |
-| `VITE_STREAM_PROXY_DELAY` | `30` | Proxy mode sync delay in seconds |
+| `BACKEND_URL` | auto-detected | Set explicitly if behind a reverse proxy and playlist URLs are wrong |
+| `VITE_STREAM_DELAY` | `18` | Restream sync delay in seconds (build arg) |
+| `VITE_STREAM_PROXY_DELAY` | `30` | Proxy mode sync delay in seconds (build arg) |
 
 ## Development
+
+Frontend and backend can be run separately during development. The Vite dev server proxies all API and socket calls to the backend automatically.
 
 ```bash
 # Backend
 cd backend && npm install && node server.js
 
-# Frontend
+# Frontend (in a separate terminal)
 cd frontend && npm install && npm run dev
 ```
+
+Frontend dev server runs on `http://localhost:8080` and proxies to `http://localhost:5000`.
 
 ## License
 
