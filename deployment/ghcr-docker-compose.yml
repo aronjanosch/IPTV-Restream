@@ -1,0 +1,42 @@
+version: "3.9"
+services:
+  iptv_restream_frontend:
+    image: ghcr.io/antebrl/iptv-restream/frontend:v2.2
+    networks:
+      - app-network
+
+  iptv_restream_backend:
+    image: ghcr.io/antebrl/iptv-restream/backend:v2.2
+    volumes:
+      - streams_data:/streams
+      - channels:/channels
+    restart: unless-stopped
+    environment:
+      STORAGE_PATH: /streams/
+      # If you have problems with the playlist, set the backend url manually here
+      #BACKEND_URL: http://localhost:5000
+    networks:
+      - app-network
+
+  # Nginx Reverse Proxy
+  iptv_restream_nginx:
+    image: ghcr.io/antebrl/iptv-restream/nginx:v2.2
+    volumes:
+      - streams_data:/streams
+    ports:
+      - "80:80" # Configure exposed port, if 80 is already in use e.g. 8080:80
+    networks:
+      - app-network
+
+volumes:
+  streams_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  channels:
+
+# Internal docker network
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,152 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Architecture Overview
+
+**IPTV StreamHub** is a full-stack application for IPTV restreaming and synchronized viewing. It consists of:
+
+- **Backend**: Node.js/Express with Socket.IO for real-time communication, FFmpeg for restreaming
+- **Frontend**: React/TypeScript with HLS.js for video playback and Socket.IO client
+- **Deployment**: Docker Compose with Nginx reverse proxy
+
+### Three Streaming Modes
+
+The application supports three streaming modes handled differently:
+
+1. **Direct Mode**: Stream URL passed directly to client (minimal server resources)
+2. **Proxy Mode**: Server proxies HLS streams, handles CORS and custom headers
+3. **Restream Mode**: Full FFmpeg transcoding with viewer-based start/stop
+
+## Development Commands
+
+### Frontend (React/TypeScript/Vite)
+```bash
+cd frontend
+npm install                    # Install dependencies
+npm run dev                    # Start development server
+npm run build                  # Build for production
+npm run lint                   # Run ESLint
+npm run preview               # Preview production build
+```
+
+### Backend (Node.js/Express)
+```bash
+cd backend
+npm install                    # Install dependencies
+npm start                     # Start server (production)
+node server.js               # Direct start
+```
+
+### Docker Development
+```bash
+docker compose up -d          # Start all services
+docker compose down           # Stop all services
+docker compose logs -f        # View logs
+docker compose build --no-cache  # Rebuild containers
+```
+
+## Key Services & Components
+
+### Backend Architecture
+
+- **ChannelService**: Central service managing channels, viewer connections, and stream lifecycle
+- **FFmpegService**: Direct FFmpeg interface for restreaming operations
+- **StreamController**: Orchestrates streaming operations and viewer-based start/stop
+- **ProxyHelperService**: URL rewriting and HTTP proxying for HLS streams
+- **Socket Handlers**: Real-time communication (ChannelSocketHandler, ChatSocketHandler, PlaylistSocketHandler)
+
+### Frontend Architecture
+
+- **VideoPlayer.tsx**: Advanced HLS.js integration with synchronization features
+- **SocketService.ts**: Centralized WebSocket management with JWT authentication
+- **AdminContext.tsx**: Global authentication state management
+- **ApiService.ts**: HTTP client with JWT token handling
+
+## Configuration
+
+### Environment Variables
+
+**Backend** (docker-compose.yml):
+- `ADMIN_ENABLED`: Enable/disable admin functionality
+- `ADMIN_PASSWORD`: Admin login password
+- `JWT_SECRET`: JWT signing secret
+- `STORAGE_PATH`: Path for restream segments
+- `BACKEND_URL`: Backend URL for playlist generation
+
+**Frontend** (build-time):
+- `VITE_BACKEND_URL`: Backend API URL
+- `VITE_STREAM_DELAY`: Direct stream delay (seconds)
+- `VITE_STREAM_PROXY_DELAY`: Proxy stream delay (seconds)
+- Synchronization parameters: `VITE_SYNCHRONIZATION_*`
+
+## Stream Mode Implementation
+
+### Proxy Mode (ProxyController.js)
+- Routes: `/proxy/channel`, `/proxy/segment`, `/proxy/key`
+- M3U8 playlist URL rewriting via `ProxyHelperService.rewriteUrls()`
+- Custom header support for protected streams
+
+### Restream Mode (FFmpegService.js)
+- Viewer-based streaming: starts/stops based on connection count
+- HLS segment generation with 6-second segments
+- Automatic cleanup of old segments
+- Program date time injection for synchronization
+
+## Real-time Features
+
+### Socket.IO Events
+- `channel-selected`: Synchronized channel switching
+- `stream-status-changed`: Stream start/stop notifications
+- `chat-message`: Real-time chat
+- `viewer-connected`/`viewer-disconnected`: Viewer tracking
+
+### Synchronization Logic
+- Program DateTime synchronization for live streams
+- Configurable tolerance and deviation handling
+- Adaptive playback rate adjustment
+- Automatic stream resume after pause
+
+## Admin Functionality
+
+### JWT Authentication
+- HTTP middleware: `AuthController.verifyToken`
+- Socket middleware: `socket/middleware/jwt.js`
+- Token stored in localStorage with automatic refresh
+
+### Protected Operations
+- Channel CRUD operations
+- Stream control (start/stop)
+- Channel clearing/cleanup
+- Administrative settings
+
+## Development Notes
+
+### Backend Testing
+- No formal test framework configured
+- Manual testing via REST API endpoints
+- Socket.IO events can be tested via browser developer tools
+
+### Frontend Development
+- TypeScript strict mode enabled
+- ESLint configured for React hooks and TypeScript
+- Tailwind CSS for styling
+- HLS.js for video playback
+
+### Common Development Tasks
+
+**Adding New Channel Features**:
+1. Update `Channel.js` model if needed
+2. Add API endpoints in relevant controller
+3. Update socket handlers for real-time updates
+4. Add frontend components and API service methods
+
+**Modifying Stream Modes**:
+- Proxy mode: Edit `ProxyController.js` and `ProxyHelperService.js`
+- Restream mode: Edit `FFmpegService.js` and `StreamController.js`
+- Frontend: Update `VideoPlayer.tsx` HLS.js configuration
+
+**Admin Features**:
+- Backend: Add to protected routes in controllers
+- Frontend: Check `isAdmin` context before rendering UI
+- Socket: Use `socket.user?.isAdmin` for event handling

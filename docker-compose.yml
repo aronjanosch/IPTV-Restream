@@ -1,0 +1,46 @@
+version: "3.9"
+services:
+  iptv_restream_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Set this to the server ip/domain, if your backend is deployed on a different server
+        #VITE_BACKEND_URL: http://123.123.123.123:5000
+        VITE_STREAM_DELAY: 18
+        VITE_STREAM_PROXY_DELAY: 30
+        # Optional settings for synchronization
+        #VITE_SYNCHRONIZATION_TOLERANCE: 0.8
+        #VITE_SYNCHRONIZATION_MAX_DEVIATION: 4
+        #VITE_SYNCHRONIZATION_ADJUSTMENT: 0.06
+        #VITE_SYNCHRONIZATION_MAX_ADJUSTMENT: 0.16
+    ports:
+      - "3000:80"
+
+  iptv_restream_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - streams_data:/streams
+      - channels:/channels
+    environment:
+      STORAGE_PATH: /streams/
+      # If you have problems with the playlist, set the backend url manually here
+      #BACKEND_URL: http://localhost:5000
+      # Admin mode configuration
+      ADMIN_ENABLED: "true"
+      ADMIN_PASSWORD: "your_secure_password"
+      # JWT Secret for admin authentication
+      JWT_SECRET: "change_this_to_a_secure_random_string"
+
+volumes:
+  streams_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  channels:
