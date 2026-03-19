@@ -1,7 +1,6 @@
 const m3uParser = require('iptv-playlist-parser');
 const ChannelService = require('./ChannelService');
 const ChannelStorage = require('./ChannelStorage');
-const StreamedSuSession = require('./session/StreamedSuSession');
 
 class PlaylistService {
 
@@ -13,18 +12,6 @@ class PlaylistService {
         if(playlist.startsWith("http")) {
             const response = await fetch(playlist);
             content = await response.text();
-
-            //check for streamedSu here and add channel for every source
-            if(playlist.includes('streamed.su')) {
-                console.log('Fetching StreamedSu API channels');
-                const channels = await StreamedSuSession.fetchApiChannels(playlist, mode, playlistName);
-                const data = channels.map(channel => {
-                    return ChannelService.addChannel(channel, false);
-                });
-
-                ChannelStorage.save(ChannelService.getChannels());
-                return data;
-            }
         } else {
             content = playlist;
             const fs = require('fs');
