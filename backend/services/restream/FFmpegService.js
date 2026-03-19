@@ -5,26 +5,36 @@ let currentFFmpegProcess = null;
 let currentChannelId = null;
 const STORAGE_PATH = process.env.STORAGE_PATH;
 
-function startFFmpeg(nextChannel) {
+async function startFFmpeg(nextChannel) {
     console.log('Starting FFmpeg process with channel:', nextChannel.id);
-    // if (currentFFmpegProcess) {
-    //     console.log('Gracefully terminate previous ffmpeg-Prozess...');
-    //     await stopFFmpeg();
-    // }
+    if (currentFFmpegProcess) {
+        console.log('Gracefully terminating previous FFmpeg process...');
+        await stopFFmpeg();
+    }
 
     let channelUrl = nextChannel.sessionUrl ? nextChannel.sessionUrl : nextChannel.url;
+    const isHls = channelUrl.includes('.m3u8');
 
     currentChannelId = nextChannel.id;
     const headers = nextChannel.headers;
 
-
-    currentFFmpegProcess = spawn('ffmpeg', [
+    const inputArgs = [
+        '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
         '-headers', headers.map(header => `${header.key}: ${header.value}`).join('\r\n'),
         '-reconnect', '1',
         '-reconnect_at_eof', '1',
         '-reconnect_streamed', '1',
         '-reconnect_delay_max', '2',
-        '-i', channelUrl,
+    ];
+
+    if (isHls) {
+        inputArgs.push('-allowed_extensions', 'ALL');
+    }
+
+    inputArgs.push('-i', channelUrl);
+
+    currentFFmpegProcess = spawn('ffmpeg', [
+        ...inputArgs,
         '-c', 'copy',
         '-f', 'hls',
         '-hls_time', '6',
@@ -42,17 +52,15 @@ function startFFmpeg(nextChannel) {
         console.error(`stderr: ${data}`);
     });
 
-    // currentFFmpegProcess.on('close', (code) => {
-    //     console.log(`ffmpeg-Process terminated with code: ${code}`);
-
-    //     // currentFFmpegProcess = null;
-    //     // //Restart if crashed
-    //     // if (code !== null && code !== 255) {
-    //     //     console.log(`Restarting FFmpeg process with channel: ${nextChannel.id}`);
-    //     //     //wait 1 second before restarting
-    //     //     setTimeout(() => startFFmpeg(nextChannel), 2000);
-    //     // }
-    // });
+    currentFFmpegProcess.on('close', (code) => {
+        console.log(`FFmpeg process terminated with code: ${code}`);
+        currentFFmpegProcess = null;
+        // code null = killed by SIGTERM (intentional stop); skip restart
+        if (code !== null) {
+            console.log(`FFmpeg crashed (code ${code}), restarting in 2s...`);
+            setTimeout(() => startFFmpeg(nextChannel), 2000);
+        }
+    });
 }
 
 function stopFFmpeg() {
