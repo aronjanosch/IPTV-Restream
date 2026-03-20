@@ -15,24 +15,30 @@ services:
       - "5000:5000"
     volumes:
       - streams_data:/streams
+      - db_data:/data
       - ./channels:/channels
     environment:
       STORAGE_PATH: /streams/
-      ADMIN_ENABLED: "true"
+      DB_PATH: /data/streamhub.db
+      # Initial admin account — only used to seed the database on first boot
+      ADMIN_NAME: "admin"
+      ADMIN_EMAIL: "admin@streamhub.local"
+      ADMIN_PASSWORD: "change_this_password"
       JWT_SECRET: "change_this_to_a_secure_random_string"
       SESSION_SECRET: "change_this_to_a_secure_random_string"
       STREAM_PASSWORD: "change_this_to_a_stream_password"
       TZ: "Europe/Berlin"
       BACKEND_URL: "https://iptv.yourdomain.com"
-      # OIDC / Authentik configuration
-      OIDC_ISSUER_URL: "https://authentik.yourdomain.com/application/o/streamhub/"
-      OIDC_CLIENT_ID: "your-client-id"
-      OIDC_CLIENT_SECRET: "your-client-secret"
-      OIDC_REDIRECT_URI: "https://iptv.yourdomain.com/api/auth/callback"
-      OIDC_FRONTEND_URL: "https://iptv.yourdomain.com"
-      OIDC_ADMIN_GROUPS: "streamhub-admins"
+      # Optional: OIDC / SSO (e.g. Authentik, Keycloak)
+      #OIDC_ISSUER_URL: "https://authentik.yourdomain.com/application/o/streamhub/"
+      #OIDC_CLIENT_ID: "your-client-id"
+      #OIDC_CLIENT_SECRET: "your-client-secret"
+      #OIDC_REDIRECT_URI: "https://iptv.yourdomain.com/api/auth/callback"
+      #OIDC_FRONTEND_URL: "https://iptv.yourdomain.com"
+      #OIDC_ADMIN_GROUPS: "streamhub-admins"
 
 volumes:
+  db_data:
   streams_data:
     driver: local
     driver_opts:

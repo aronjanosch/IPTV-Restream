@@ -2,14 +2,10 @@ const PlaylistService = require('../services/PlaylistService');
 const ChannelService = require('../services/ChannelService');
 const PlaylistUpdater = require('../services/PlaylistUpdater');
 const Playlist = require('../models/Playlist');
-require('dotenv').config();
-
-const ADMIN_ENABLED = process.env.ADMIN_ENABLED === 'true';
 
 async function handleAddPlaylist({ playlist, playlistName, mode, playlistUpdate, headers }, io, socket) {
     try {
-        // Check if user is authenticated as admin from the socket middleware
-        if (ADMIN_ENABLED && !socket.user?.isAdmin) {
+        if (!socket.user?.isAdmin) {
             return socket.emit('app-error', { message: 'Admin access required to add playlists' });
         }
 
@@ -33,8 +29,7 @@ async function handleAddPlaylist({ playlist, playlistName, mode, playlistUpdate,
 
 async function handleUpdatePlaylist({ playlist, updatedAttributes }, io, socket) {
     try {
-        // Check if user is authenticated as admin from the socket middleware
-        if (ADMIN_ENABLED && !socket.user?.isAdmin) {
+        if (!socket.user?.isAdmin) {
             return socket.emit('app-error', { message: 'Admin access required to update playlists' });
         }
 
@@ -64,8 +59,7 @@ async function handleUpdatePlaylist({ playlist, updatedAttributes }, io, socket)
 
 async function handleDeletePlaylist({ playlist }, io, socket) {
     try {
-        // Check if user is authenticated as admin from the socket middleware
-        if (ADMIN_ENABLED && !socket.user?.isAdmin) {
+        if (!socket.user?.isAdmin) {
             return socket.emit('app-error', { message: 'Admin access required to delete playlists' });
         }
 

@@ -1,32 +1,21 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'streamhub-jwt-secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required.');
 
-/**
- * Socket.io middleware to authenticate users via JWT token
- */
 function socketAuthMiddleware(socket, next) {
-  // Retrieve token from handshake auth or query param
   const token = socket.handshake.auth.token || socket.handshake.query.token;
 
   if (!token) {
-    // Allow connection but without admin privileges
-    socket.user = { isAdmin: false };
-    return next();
+    return next(new Error('Authentication required.'));
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Attach the decoded user info to the socket for use in handlers
-    socket.user = decoded;
-    
+    socket.user = jwt.verify(token, JWT_SECRET);
     return next();
-  } catch (error) {
-    // If token is invalid, connect without admin privileges
-    socket.user = { isAdmin: false };
-    return next();
+  } catch {
+    return next(new Error('Invalid or expired token.'));
   }
 }
 
