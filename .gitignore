@@ -44,6 +44,9 @@ Thumbs.db
 *.tar.gz
 *.rar
 
+# SQLite runtime artifacts
+backend/data/*.db-wal
+backend/data/*.db-shm
 
 .devcontainer/
 docker-compose.*.yml
