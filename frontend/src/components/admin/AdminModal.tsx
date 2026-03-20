@@ -1,8 +1,7 @@
-import React, { useState, useContext } from 'react';
-import { X, Shield, ShieldOff } from 'lucide-react';
+import React, { useContext } from 'react';
+import { X, Shield, ShieldOff, LogIn } from 'lucide-react';
 import { ToastContext } from '../notifications/ToastContext';
 import { useAdmin } from './AdminContext';
-import apiService from '../../services/ApiService';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -10,56 +9,22 @@ interface AdminModalProps {
 }
 
 function AdminModal({ isOpen, onClose }: AdminModalProps) {
-  const [password, setPassword] = useState('');
   const { isAdmin, setIsAdmin } = useAdmin();
   const { addToast } = useContext(ToastContext);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const response = await apiService.request<{success: boolean, token?: string}>('/auth/admin-login', 'POST', undefined, {
-        password
-      });
-      
-      if (response.success && response.token) {
-        // Store JWT token in localStorage
-        localStorage.setItem('admin_token', response.token);
-        
-        setIsAdmin(true);
-        addToast({
-          type: 'success',
-          title: 'Admin mode enabled',
-          duration: 3000,
-        });
-        onClose();
-      } else {
-        addToast({
-          type: 'error',
-          title: 'Invalid password',
-          duration: 3000,
-        });
-      }
-    } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Authentication failed',
-        message: 'Please try again',
-        duration: 3000,
-      });
-    }
+  const handleLogin = () => {
+    // Navigate to backend OIDC login — backend will redirect to Authentik
+    window.location.href = '/api/auth/login';
   };
 
   const handleLogout = () => {
-    // Remove JWT token from localStorage
     localStorage.removeItem('admin_token');
-    
     setIsAdmin(false);
     addToast({
       type: 'info',
-      title: 'Admin mode disabled',
+      title: 'Logged out',
       duration: 3000,
     });
     onClose();
@@ -93,33 +58,22 @@ function AdminModal({ isOpen, onClose }: AdminModalProps) {
                 onClick={handleLogout}
                 className="w-full p-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
-                Logout from Admin Mode
+                Logout
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="adminPassword" className="block text-sm font-medium mb-1">
-                  Admin Password
-                </label>
-                <input
-                  type="password"
-                  id="adminPassword"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter admin password"
-                  required
-                />
-              </div>
-
+            <div className="space-y-4">
+              <p className="text-gray-400 text-sm">
+                Sign in with your identity provider to enable admin access.
+              </p>
               <button
-                type="submit"
-                className="w-full p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleLogin}
+                className="w-full p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
               >
-                Login
+                <LogIn className="w-4 h-4" />
+                <span>Login with SSO</span>
               </button>
-            </form>
+            </div>
           )}
         </div>
       </div>

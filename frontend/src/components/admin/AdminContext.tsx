@@ -62,16 +62,37 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   }, [isAdmin]);
 
-  // Initial setup - check for existing token
+  // Initial setup — check for token from OIDC redirect or existing localStorage token
   useEffect(() => {
-    // Check if there's a token in localStorage on component mount
-    const token = localStorage.getItem('admin_token');
+    // Pick up token delivered via ?admin_token= query param after OIDC callback
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('admin_token');
+    const authError = params.get('auth_error');
 
-    if (token && isTokenValid(token)) {
+    if (urlToken && isTokenValid(urlToken)) {
+      localStorage.setItem('admin_token', urlToken);
+      setAdminToken(urlToken);
       setIsAdmin(true);
-      setAdminToken(token);
-    } else if (token) {
-      // Clear invalid token
+      // Remove the token from the URL without triggering a page reload
+      params.delete('admin_token');
+      const newSearch = params.toString();
+      window.history.replaceState({}, '', newSearch ? `?${newSearch}` : window.location.pathname);
+      return;
+    }
+
+    if (authError) {
+      console.error('OIDC authentication error:', decodeURIComponent(authError));
+      params.delete('auth_error');
+      const newSearch = params.toString();
+      window.history.replaceState({}, '', newSearch ? `?${newSearch}` : window.location.pathname);
+    }
+
+    // Fall back to persisted token
+    const stored = localStorage.getItem('admin_token');
+    if (stored && isTokenValid(stored)) {
+      setIsAdmin(true);
+      setAdminToken(stored);
+    } else if (stored) {
       localStorage.removeItem('admin_token');
     }
   }, []);

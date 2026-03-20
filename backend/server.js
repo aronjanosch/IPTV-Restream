@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require('express-session');
 const dotenv = require('dotenv');
 const { Server } = require('socket.io');
 
@@ -14,10 +15,25 @@ const authController = require('./controllers/AuthController');
 const streamController = require('./services/restream/StreamController');
 const ChannelService = require('./services/ChannelService');
 const PlaylistUpdater = require('./services/PlaylistUpdater');
+const { initOidcClient } = require('./services/OidcService');
 
 dotenv.config();
 
 const app = express();
+
+// Session middleware — required for OIDC PKCE state between redirect and callback
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'streamhub-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 5 * 60 * 1000, // 5 minutes — only needed for the login handshake
+  },
+}));
+
 app.use(express.json());
 
 // CORS middleware
@@ -33,7 +49,8 @@ app.use((req, res, next) => {
 
 // Auth routes
 const authRouter = express.Router();
-authRouter.post('/admin-login', authController.adminLogin);
+authRouter.get('/login', authController.initiateLogin);
+authRouter.get('/callback', authController.handleCallback);
 authRouter.get('/admin-status', authController.checkAdminStatus);
 
 app.use('/api/auth', authRouter);
@@ -121,65 +138,73 @@ process.on('unhandledRejection', (err) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, async () => {
-  console.log(`Server listening on Port ${PORT}`);
-  // Don't automatically start streaming - wait for viewers to connect
-  PlaylistUpdater.startScheduler();
-  PlaylistUpdater.registerChannelsPlaylist(ChannelService.getChannels());
-});
 
-
-// Web Sockets with explicit CORS configuration
-const io = new Server(server, {
-  cors: {
-    origin: "*", // Allow any origin in development
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type"],
-    credentials: true,
-  },
-});
-
-// Add JWT authentication middleware to socket.io
-io.use(socketAuthMiddleware);
-
-const connectedUsers = {};
-
-io.on('connection', socket => {
-  console.log('New client connected');
-
-  // Handle viewer connection - start streaming if first viewer
-  ChannelService.viewerConnected().then(streamStarted => {
-    if (streamStarted) {
-      // Notify all clients that streaming has started
-      io.emit('stream-status-changed', {
-        status: 'started',
-        channelId: ChannelService.getCurrentChannel().id
-      });
+async function startServer() {
+  // Initialize OIDC client if configured
+  if (process.env.OIDC_ISSUER_URL) {
+    try {
+      await initOidcClient();
+    } catch (err) {
+      console.warn('OIDC init failed (continuing without OIDC):', err.message);
     }
+  }
+
+  const server = app.listen(PORT, () => {
+    console.log(`Server listening on Port ${PORT}`);
+    PlaylistUpdater.startScheduler();
+    PlaylistUpdater.registerChannelsPlaylist(ChannelService.getChannels());
   });
 
-  socket.on('new-user', userId => {
-    connectedUsers[socket.id] = userId;
-    socket.broadcast.emit('user-connected', userId);
+  // Web Sockets with explicit CORS configuration
+  const io = new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["Authorization", "Content-Type"],
+      credentials: true,
+    },
   });
 
-  socket.on('disconnect', () => {
-    // Handle viewer disconnection - stop streaming if no viewers
-    ChannelService.viewerDisconnected().then(streamStopped => {
-      if (streamStopped) {
-        // Notify all clients that streaming has stopped
+  // Add JWT authentication middleware to socket.io
+  io.use(socketAuthMiddleware);
+
+  const connectedUsers = {};
+
+  io.on('connection', socket => {
+    console.log('New client connected');
+
+    ChannelService.viewerConnected().then(streamStarted => {
+      if (streamStarted) {
         io.emit('stream-status-changed', {
-          status: 'stopped',
+          status: 'started',
           channelId: ChannelService.getCurrentChannel().id
         });
       }
     });
 
-    socket.broadcast.emit('user-disconnected', connectedUsers[socket.id]);
-    delete connectedUsers[socket.id];
-  });
+    socket.on('new-user', userId => {
+      connectedUsers[socket.id] = userId;
+      socket.broadcast.emit('user-connected', userId);
+    });
 
-  ChannelSocketHandler(io, socket);
-  PlaylistSocketHandler(io, socket);
-  ChatSocketHandler(io, socket);
-});
+    socket.on('disconnect', () => {
+      ChannelService.viewerDisconnected().then(streamStopped => {
+        if (streamStopped) {
+          io.emit('stream-status-changed', {
+            status: 'stopped',
+            channelId: ChannelService.getCurrentChannel().id
+          });
+        }
+      });
+
+      socket.broadcast.emit('user-disconnected', connectedUsers[socket.id]);
+      delete connectedUsers[socket.id];
+    });
+
+    ChannelSocketHandler(io, socket);
+    PlaylistSocketHandler(io, socket);
+    ChatSocketHandler(io, socket);
+  });
+}
+
+startServer();

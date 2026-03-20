@@ -1,16 +1,9 @@
 const ffmpegService = require('./FFmpegService');
 const storageService = require('./StorageService');
-const SessionFactory = require('../session/SessionFactory');
 
 async function start(nextChannel) {
     console.log('Starting channel', nextChannel.id);
     storageService.createChannelStorage(nextChannel.id);
-
-    const sessionProvider = SessionFactory.getSessionProvider(nextChannel);
-    if(sessionProvider) {
-        await sessionProvider.createSession();
-    }
-
     ffmpegService.startFFmpeg(nextChannel);
 }
 

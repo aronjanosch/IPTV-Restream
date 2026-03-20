@@ -12,17 +12,10 @@ const basicAuth = (req, res, next) => {
         const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
         const [username, password] = credentials.split(':');
 
-        const adminPassword = process.env.ADMIN_PASSWORD;
         const streamPassword = process.env.STREAM_PASSWORD;
         const jwtSecret = process.env.JWT_SECRET;
 
-        // Admin username + password
-        if (username === 'admin' && adminPassword && password === adminPassword) {
-            req.basicAuthUser = { username: 'admin', isAdmin: true };
-            return next();
-        }
-
-        // Admin username + JWT token
+        // Admin username + OIDC-minted JWT token as password (for IPTV clients)
         if (jwtSecret) {
             try {
                 const decoded = jwt.verify(password, jwtSecret);
@@ -31,7 +24,7 @@ const basicAuth = (req, res, next) => {
                     return next();
                 }
             } catch (jwtError) {
-                // JWT verification failed
+                // JWT verification failed — try other methods
             }
         }
 
