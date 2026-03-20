@@ -68,11 +68,15 @@ docker compose build --no-cache  # Rebuild containers
 ### Environment Variables
 
 **Backend** (docker-compose.yml):
-- `ADMIN_ENABLED`: Enable/disable admin functionality
-- `ADMIN_PASSWORD`: Admin login password
-- `JWT_SECRET`: JWT signing secret
+- `ADMIN_NAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD`: First-boot admin seeding (only used when DB is empty)
+- `JWT_SECRET`: JWT signing secret (**required** — server refuses to start without it)
+- `SESSION_SECRET`: Express session secret for OIDC PKCE state
+- `STREAM_PASSWORD`: Shared password for IPTV clients using `stream` as username
 - `STORAGE_PATH`: Path for restream segments
 - `BACKEND_URL`: Backend URL for playlist generation
+- `OIDC_ISSUER_URL` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URI`: OIDC/SSO provider config (optional)
+- `OIDC_FRONTEND_URL`: Frontend URL for OIDC post-login redirect
+- `OIDC_ADMIN_GROUPS`: Comma-separated OIDC group names whose members get the admin role
 
 **Frontend** (build-time):
 - `VITE_BACKEND_URL`: Backend API URL
@@ -107,18 +111,27 @@ docker compose build --no-cache  # Rebuild containers
 - Adaptive playback rate adjustment
 - Automatic stream resume after pause
 
-## Admin Functionality
+## Authentication & User Accounts
 
-### JWT Authentication
-- HTTP middleware: `AuthController.verifyToken`
-- Socket middleware: `socket/middleware/jwt.js`
-- Token stored in localStorage with automatic refresh
+### Architecture
+- All users must log in — the frontend shows `LoginPage` until a valid JWT is present
+- Two login methods: username/email + password, and OIDC/SSO (optional, enabled via env vars)
+- JWTs are signed with `JWT_SECRET`, stored in `localStorage`, and verified on every HTTP and Socket.IO request
+- Roles: `user` (watch + chat) and `admin` (full channel/playlist management)
 
-### Protected Operations
-- Channel CRUD operations
-- Stream control (start/stop)
-- Channel clearing/cleanup
-- Administrative settings
+### Key Files
+- `database.js`: SQLite schema + first-boot admin seeding
+- `services/UserService.js`: bcrypt CRUD for user accounts
+- `services/OidcService.js`: `openid-client` discovery + PKCE flow
+- `controllers/AuthController.js`: login, OIDC initiation/callback, JWT minting, `verifyToken` middleware
+- `controllers/UserController.js`: admin-gated REST CRUD for user management
+- `middleware/basicAuth.js`: accepts username+password or JWT-as-password for IPTV clients (VLC etc.)
+- `socket/middleware/jwt.js`: JWT verification on every Socket.IO connection
+
+### Admin-only Operations
+- Channel CRUD (HTTP routes + Socket.IO events)
+- Playlist management (Socket.IO events)
+- User management (`GET/POST/PUT/DELETE /api/users`)
 
 ## Development Notes
 
