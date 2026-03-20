@@ -33,26 +33,8 @@ function Chat() {
     };
     socketService.subscribeToEvent('chat-message', messageListener);
 
-    const channelSelectedListener = (selectedChannel: Channel) => {
-      setMessages((prev) => [
-        ...prev, 
-        {
-          id: prev.length ? prev[prev.length -1].id + 1 : 1,
-          user: {
-            name: 'System',
-            avatar: '',
-          },
-          message: `Switched to ${selectedChannel.name}'s stream`,
-          timestamp: new Date().toISOString(),
-          userId: 'System',
-        }
-      ]);
-    }
-    socketService.subscribeToEvent('channel-selected', channelSelectedListener);
-
     return () => {
       socketService.unsubscribeFromEvent('chat-message', messageListener);
-      socketService.unsubscribeFromEvent('channel-selected', channelSelectedListener);
     };
   }, []);
 

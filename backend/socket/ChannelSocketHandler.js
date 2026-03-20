@@ -1,4 +1,5 @@
 const ChannelService = require('../services/ChannelService');
+const ChatService = require('../services/ChatService');
 
 module.exports = (io, socket) => {
     socket.on('add-channel', ({ name, url, avatar, mode, headersJson }) => {
@@ -19,6 +20,15 @@ module.exports = (io, socket) => {
         try {
             const nextChannel = await ChannelService.setCurrentChannel(id);
             io.emit('channel-selected', nextChannel);
+
+            const username = socket.user?.username || 'Unknown';
+            const chatMessage = ChatService.addMessage(
+                'System',
+                '',
+                `${username} switched to ${nextChannel.name}`,
+                new Date().toISOString()
+            );
+            io.emit('chat-message', chatMessage);
         } catch (err) {
             console.error(err);
             socket.emit('app-error', { message: err.message });

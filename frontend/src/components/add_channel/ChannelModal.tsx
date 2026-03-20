@@ -15,7 +15,7 @@ interface ChannelModalProps {
 function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) {
   const [type, setType] = useState<'channel' | 'playlist'>('playlist');
   const [isEditMode, setIsEditMode] = useState(false);
-  const [inputMethod, setInputMethod] = useState<'url' | 'text'>('url');
+  const [inputMethod, setInputMethod] = useState<'url' | 'text' | 'file'>('url');
 
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -26,6 +26,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
   const [playlistName, setPlaylistName] = useState('');
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [playlistText, setPlaylistText] = useState('');
+  const [playlistFileName, setPlaylistFileName] = useState('');
   const [playlistUpdate, setPlaylistUpdate] = useState(false);
 
   const { addToast } = useContext(ToastContext);
@@ -46,14 +47,17 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
         setInputMethod('url');
         setPlaylistUrl('');
         setPlaylistText('');
+        setPlaylistFileName('');
       } else if(channel.playlist.startsWith("http")) {
         setInputMethod('url');
         setPlaylistUrl(channel.playlist);
         setPlaylistText('');
+        setPlaylistFileName('');
       } else {
         setInputMethod('text');
         setPlaylistUrl('');
         setPlaylistText(channel.playlist);
+        setPlaylistFileName('');
       }
 
     } else {
@@ -65,6 +69,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
       setPlaylistName('');
       setPlaylistUrl('');
       setPlaylistText('');
+      setPlaylistFileName('');
       setPlaylistUpdate(false);
       setIsEditMode(false);
       setType('playlist');
@@ -106,7 +111,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
       );
     } else if (type === 'playlist') {
       if (inputMethod === 'url' && !playlistUrl.trim()) return;
-      if (inputMethod === 'text' && !playlistText.trim()) return;
+      if ((inputMethod === 'text' || inputMethod === 'file') && !playlistText.trim()) return;
       
       socketService.addPlaylist(
         inputMethod === 'url' ? playlistUrl.trim() : playlistText.trim(),
@@ -125,6 +130,58 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
     });
 
     onClose();
+  };
+
+  const handlePlaylistFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      const trimmedContent = content.trim();
+
+      if (!trimmedContent) {
+        addToast({
+          type: 'error',
+          title: 'Uploaded file is empty',
+          duration: 3000,
+        });
+        setPlaylistFileName('');
+        setPlaylistText('');
+        return;
+      }
+
+      if (!trimmedContent.startsWith('#EXTM3U')) {
+        addToast({
+          type: 'error',
+          title: 'Invalid M3U file',
+          message: 'File must start with #EXTM3U',
+          duration: 3500,
+        });
+        setPlaylistFileName('');
+        setPlaylistText('');
+        return;
+      }
+
+      setPlaylistText(trimmedContent);
+      setPlaylistFileName(file.name);
+      addToast({
+        type: 'success',
+        title: 'Playlist file loaded',
+        message: `${file.name} is ready to import`,
+        duration: 2500,
+      });
+    } catch (error) {
+      setPlaylistFileName('');
+      setPlaylistText('');
+      addToast({
+        type: 'error',
+        title: 'Failed to read file',
+        duration: 3000,
+      });
+    }
   };
 
   const handleUpdate = (id: number) => {
@@ -334,6 +391,14 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                       >
                         M3U Text
                       </button>
+                      <span className="mx-2 text-gray-400">/</span>
+                      <button
+                        type="button"
+                        onClick={() => setInputMethod('file')}
+                        className="text-gray-400 hover:text-gray-200"
+                      >
+                        Upload File
+                      </button>
                     </label>
                   </div>
                   <input
@@ -346,7 +411,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                     required={inputMethod === 'url'}
                   />
                 </div>
-              ) : (
+              ) : inputMethod === 'text' ? (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label htmlFor="playlistText" className="block text-sm font-medium">
@@ -365,6 +430,14 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                       >
                         M3U Text
                       </button>
+                      <span className="mx-2 text-gray-400">/</span>
+                      <button
+                        type="button"
+                        onClick={() => setInputMethod('file')}
+                        className="text-gray-400 hover:text-gray-200"
+                      >
+                        Upload File
+                      </button>
                     </label>
                   </div>
                   <textarea
@@ -376,6 +449,49 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
                     required={inputMethod === 'text'}
                     style={{ resize: 'none' }}
                   />
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor="playlistFile" className="block text-sm font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setInputMethod('url')}
+                        className="text-gray-400 hover:text-gray-200"
+                      >
+                        M3U Playlist URL
+                      </button>
+                      <span className="mx-2 text-gray-400">/</span>
+                      <button
+                        type="button"
+                        onClick={() => setInputMethod('text')}
+                        className="text-gray-400 hover:text-gray-200"
+                      >
+                        M3U Text
+                      </button>
+                      <span className="mx-2 text-gray-400">/</span>
+                      <button
+                        type="button"
+                        onClick={() => setInputMethod('file')}
+                        className="font-bold text-white"
+                      >
+                        Upload File
+                      </button>
+                    </label>
+                  </div>
+                  <input
+                    type="file"
+                    id="playlistFile"
+                    accept=".m3u,.m3u8,.txt,text/plain,audio/x-mpegurl,application/vnd.apple.mpegurl"
+                    onChange={handlePlaylistFileUpload}
+                    className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1 file:text-white hover:file:bg-blue-700"
+                    required={inputMethod === 'file' && !playlistText.trim()}
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    {playlistFileName
+                      ? `Loaded: ${playlistFileName}`
+                      : 'Upload an M3U file starting with #EXTM3U'}
+                  </p>
                 </div>
               )}
 
