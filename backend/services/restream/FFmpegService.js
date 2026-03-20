@@ -1,4 +1,5 @@
 const { spawn } = require('child_process');
+const path = require('path');
 require('dotenv').config();
 
 let currentFFmpegProcess = null;
@@ -21,14 +22,22 @@ async function startFFmpeg(nextChannel) {
     const inputArgs = [
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
         '-headers', headers.map(header => `${header.key}: ${header.value}`).join('\r\n'),
-        '-reconnect', '1',
-        '-reconnect_at_eof', '1',
-        '-reconnect_streamed', '1',
-        '-reconnect_delay_max', '2',
     ];
 
     if (isHls) {
-        inputArgs.push('-allowed_extensions', 'ALL');
+        // HLS demuxer manages its own segment fetching; don't use generic HTTP reconnect flags
+        // live_start_index -3 starts from near-live so segment tokens are still valid
+        inputArgs.push(
+            '-live_start_index', '-3',
+            '-allowed_extensions', 'ALL',
+        );
+    } else {
+        inputArgs.push(
+            '-reconnect', '1',
+            '-reconnect_at_eof', '1',
+            '-reconnect_streamed', '1',
+            '-reconnect_delay_max', '2',
+        );
     }
 
     inputArgs.push('-i', channelUrl);
@@ -41,7 +50,7 @@ async function startFFmpeg(nextChannel) {
         '-hls_list_size', '5',
         '-hls_flags', 'delete_segments+program_date_time',
         '-start_number', Math.floor(Date.now() / 1000),
-        `${STORAGE_PATH}${currentChannelId}/${currentChannelId}.m3u8`
+        path.join(STORAGE_PATH, String(currentChannelId), `${currentChannelId}.m3u8`)
     ]);
 
     currentFFmpegProcess.stdout.on('data', (data) => {
