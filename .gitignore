@@ -19,6 +19,7 @@ yarn-error.log*
 
 # Environment variables
 .env
+channels/
 
 # Build output
 dist/
