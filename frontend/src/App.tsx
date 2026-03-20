@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, Shield } from 'lucide-react';
+import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, Shield, User } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import ChannelList from './components/ChannelList';
 import Chat from './components/chat/Chat';
@@ -13,9 +13,19 @@ import { ToastProvider, ToastContext } from './components/notifications/ToastCon
 import ToastContainer from './components/notifications/ToastContainer';
 import { AdminProvider, useAdmin } from './components/admin/AdminContext';
 import AdminModal from './components/admin/AdminModal';
+import LoginPage from './components/auth/LoginPage';
 
 function AppContent() {
+  const { isLoggedIn } = useAdmin();
 
+  if (!isLoggedIn) {
+    return <LoginPage />;
+  }
+
+  return <AppMain />;
+}
+
+function AppMain() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,7 +44,7 @@ function AppContent() {
   const [isPlaylistDropdownOpen, setIsPlaylistDropdownOpen] = useState(false);
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
-  const { isAdmin, isAdminEnabled, setIsAdminEnabled } = useAdmin();
+  const { isAdmin, username } = useAdmin();
   const { addToast } = useContext(ToastContext);
 
   // Get unique playlists from channels
@@ -71,12 +81,6 @@ function AppContent() {
   }, [selectedPlaylist, channels]);
 
   useEffect(() => {
-    // Check if admin mode is enabled on the server
-    apiService
-      .request<{ enabled: boolean }>('/auth/admin-status', 'GET')
-      .then((data) => setIsAdminEnabled(data.enabled))
-      .catch((error) => console.error('Error checking admin status:', error));
-
     apiService
       .request<Channel[]>('/channels/', 'GET')
       .then((data) => setChannels(data))
@@ -169,11 +173,9 @@ function AppContent() {
 
   const handleEditChannel = (channel: Channel) => {
     // Only allow editing if admin mode is not enabled or user is admin
-    if (!isAdminEnabled || isAdmin) {
+    if (isAdmin) {
       setEditChannel(channel);
       setIsModalOpen(true);
-    } else {
-      setIsAdminModalOpen(true);
     }
   };
 
@@ -216,15 +218,16 @@ function AppContent() {
             >
               <Settings className="w-6 h-6 text-blue-500" />
             </button>
-            {isAdminEnabled && (
-              <button
-                onClick={() => setIsAdminModalOpen(true)}
-                className={`p-2 hover:bg-gray-800 rounded-lg transition-colors ${isAdmin ?
-                  "text-green-500" : ""}`}
-              >
-                <Shield className="w-6 h-6" />
-              </button>
-            )}
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors flex items-center space-x-1"
+              title={username ?? ''}
+            >
+              {isAdmin
+                ? <Shield className="w-6 h-6 text-green-500" />
+                : <User className="w-6 h-6 text-blue-400" />
+              }
+            </button>
           </div>
         </header>
 
@@ -323,21 +326,18 @@ function AppContent() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    // Only allow adding channels if admin mode is not enabled or user is admin
-                    if (!isAdminEnabled || isAdmin) {
+                {isAdmin && (
+                  <button
+                    onClick={() => {
                       setIsModalOpen(true);
                       setIsGroupDropdownOpen(false);
                       setIsPlaylistDropdownOpen(false);
-                    } else {
-                      setIsAdminModalOpen(true);
-                    }
-                  }}
-                  className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
+                    }}
+                    className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                )}
               </div>
 
               <ChannelList
@@ -346,7 +346,6 @@ function AppContent() {
                 setSearchQuery={setSearchQuery}
                 onEditChannel={handleEditChannel}
                 isAdmin={isAdmin}
-                isAdminEnabled={isAdminEnabled}
               />
             </div>
 

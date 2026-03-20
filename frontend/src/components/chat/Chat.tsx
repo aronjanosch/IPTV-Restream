@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
 import socketService from '../../services/SocketService';
+import { useUser } from '../admin/AdminContext';
 import { Channel, ChatMessage, User } from '../../types';
 import SendMessage from './SendMessage';
 import SystemMessage from './SystemMessage';
@@ -15,16 +16,15 @@ function generateAvatar(name: string): string {
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
-function generateUser(): User {
-  const num = Math.floor(Math.random() * 9000) + 1000;
-  const name = `user${num}`;
-  return { name, avatar: generateAvatar(name) };
-}
-
 function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [user] = useState<User>(generateUser);
+  const { username } = useUser();
+
+  const user: User = useMemo(() => ({
+    name: username ?? 'Unknown',
+    avatar: generateAvatar(username ?? '?'),
+  }), [username]);
 
   useEffect(() => {
 

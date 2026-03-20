@@ -3,81 +3,96 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import socketService from '../../services/SocketService';
 
-interface AdminContextType {
+interface DecodedToken {
+  userId: number;
+  username: string;
+  email: string;
+  role: string;
   isAdmin: boolean;
-  setIsAdmin: (value: boolean) => void;
-  isAdminEnabled: boolean;
-  setIsAdminEnabled: (value: boolean) => void;
-  adminToken: string | null;
+  exp: number;
 }
 
-const AdminContext = createContext<AdminContextType>({
+interface UserContextType {
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+  userId: number | null;
+  username: string | null;
+  email: string | null;
+  role: string | null;
+  adminToken: string | null;
+  login: (token: string) => void;
+  logout: () => void;
+}
+
+const UserContext = createContext<UserContextType>({
+  isLoggedIn: false,
   isAdmin: false,
-  setIsAdmin: () => {},
-  isAdminEnabled: false,
-  setIsAdminEnabled: () => {},
+  userId: null,
+  username: null,
+  email: null,
+  role: null,
   adminToken: null,
+  login: () => {},
+  logout: () => {},
 });
 
-export const useAdmin = () => useContext(AdminContext);
+export const useAdmin = () => useContext(UserContext);
+export const useUser = () => useContext(UserContext);
 
 interface AdminProviderProps {
   children: ReactNode;
 }
 
-// Helper function to check if token is valid
-const isTokenValid = (token: string): boolean => {
+function decodeToken(token: string): DecodedToken | null {
   try {
-    const decoded: any = jwtDecode(token);
-    // Check if token is expired
-    return decoded.exp * 1000 > Date.now();
+    const decoded = jwtDecode<DecodedToken>(token);
+    if (decoded.exp * 1000 < Date.now()) return null;
+    return decoded;
   } catch {
-    return false;
+    return null;
   }
-};
+}
 
 export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isAdminEnabled, setIsAdminEnabled] = useState(false);
   const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [user, setUser] = useState<DecodedToken | null>(null);
 
-  // Effect to handle token changes
-  useEffect(() => {
-    // When admin status changes, update socket connection
-    if (isAdmin) {
-      // Small delay to ensure token is saved before reconnecting
-      setTimeout(() => {
-        socketService.updateAuthToken();
-      }, 100);
-    } else {
-      // Reset token and reconnect
-      localStorage.removeItem('admin_token');
-      setAdminToken(null);
-      socketService.updateAuthToken();
-    }
-  }, [isAdmin]);
+  const login = useCallback((token: string) => {
+    const decoded = decodeToken(token);
+    if (!decoded) return;
+    localStorage.setItem('admin_token', token);
+    setAdminToken(token);
+    setUser(decoded);
+    setTimeout(() => socketService.updateAuthToken(), 100);
+  }, []);
 
-  // Initial setup — check for token from OIDC redirect or existing localStorage token
+  const logout = useCallback(() => {
+    localStorage.removeItem('admin_token');
+    setAdminToken(null);
+    setUser(null);
+    socketService.disconnect();
+  }, []);
+
+  // On mount: pick up token from OIDC redirect URL or localStorage
   useEffect(() => {
-    // Pick up token delivered via ?admin_token= query param after OIDC callback
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('admin_token');
     const authError = params.get('auth_error');
 
-    if (urlToken && isTokenValid(urlToken)) {
-      localStorage.setItem('admin_token', urlToken);
-      setAdminToken(urlToken);
-      setIsAdmin(true);
-      // Remove the token from the URL without triggering a page reload
+    if (urlToken) {
       params.delete('admin_token');
       const newSearch = params.toString();
       window.history.replaceState({}, '', newSearch ? `?${newSearch}` : window.location.pathname);
-      return;
+      if (decodeToken(urlToken)) {
+        login(urlToken);
+        return;
+      }
     }
 
     if (authError) {
@@ -87,27 +102,33 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       window.history.replaceState({}, '', newSearch ? `?${newSearch}` : window.location.pathname);
     }
 
-    // Fall back to persisted token
     const stored = localStorage.getItem('admin_token');
-    if (stored && isTokenValid(stored)) {
-      setIsAdmin(true);
-      setAdminToken(stored);
-    } else if (stored) {
-      localStorage.removeItem('admin_token');
+    if (stored) {
+      const decoded = decodeToken(stored);
+      if (decoded) {
+        setAdminToken(stored);
+        setUser(decoded);
+      } else {
+        localStorage.removeItem('admin_token');
+      }
     }
-  }, []);
+  }, [login]);
 
   return (
-    <AdminContext.Provider
+    <UserContext.Provider
       value={{
-        isAdmin,
-        setIsAdmin,
-        isAdminEnabled,
-        setIsAdminEnabled,
+        isLoggedIn: !!user,
+        isAdmin: user?.role === 'admin',
+        userId: user?.userId ?? null,
+        username: user?.username ?? null,
+        email: user?.email ?? null,
+        role: user?.role ?? null,
         adminToken,
+        login,
+        logout,
       }}
     >
       {children}
-    </AdminContext.Provider>
+    </UserContext.Provider>
   );
 };
