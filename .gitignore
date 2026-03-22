@@ -50,4 +50,5 @@ backend/data/*.db-wal
 backend/data/*.db-shm
 
 .devcontainer/
+# Machine-specific compose (keep templates docker-compose.airvpn.yml / protonvpn.yml in git)
 docker-compose.*.yml

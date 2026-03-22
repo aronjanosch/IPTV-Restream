@@ -46,6 +46,22 @@ docker compose logs -f        # View logs
 docker compose build --no-cache  # Rebuild containers
 ```
 
+### Docker + VPN (gluetun)
+
+Optional stacks route **outbound** IPTV traffic through a VPN while keeping the default `docker-compose.yml` free of provider-specific settings.
+
+- **`docker-compose.airvpn.yml`** — AirVPN WireGuard (`VPN_SERVICE_PROVIDER=airvpn`). Set `AIRVPN_*` vars in `.env` (see `.env.example`). Use IPv4-only `AIRVPN_WIREGUARD_ADDRESSES` unless Docker IPv6 is enabled.
+- **`docker-compose.protonvpn.yml`** — ProtonVPN WireGuard. Set `PROTON_WIREGUARD_PRIVATE_KEY` and optional `PROTON_SERVER_COUNTRIES` in `.env`.
+
+Both files use Compose `name: iptv-restream` so `db_data` / `streams_data` are shared when you switch stacks. Run only one VPN stack at a time (port `5000`).
+
+```bash
+docker compose -f docker-compose.airvpn.yml up -d
+docker compose -f docker-compose.protonvpn.yml up -d
+```
+
+Local-only overrides can still live in gitignored `docker-compose.prod.yml` or `docker-compose.override.yml`.
+
 ## Key Services & Components
 
 ### Backend Architecture

@@ -1,9 +1,11 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 let currentFFmpegProcess = null;
 let currentChannelId = null;
+let intentionallyStopped = false;
 const STORAGE_PATH = process.env.STORAGE_PATH;
 
 async function startFFmpeg(nextChannel) {
@@ -13,11 +15,17 @@ async function startFFmpeg(nextChannel) {
         await stopFFmpeg();
     }
 
+    intentionallyStopped = false;
+
     let channelUrl = nextChannel.sessionUrl ? nextChannel.sessionUrl : nextChannel.url;
     const isHls = channelUrl.includes('.m3u8');
 
     currentChannelId = nextChannel.id;
     const headers = nextChannel.headers;
+
+    // Ensure output directory exists (may have been deleted on a previous stop)
+    const outputDir = path.join(STORAGE_PATH, String(currentChannelId));
+    fs.mkdirSync(outputDir, { recursive: true });
 
     const inputArgs = [
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
@@ -50,7 +58,7 @@ async function startFFmpeg(nextChannel) {
         '-hls_list_size', '5',
         '-hls_flags', 'delete_segments+program_date_time',
         '-start_number', Math.floor(Date.now() / 1000),
-        path.join(STORAGE_PATH, String(currentChannelId), `${currentChannelId}.m3u8`)
+        path.join(outputDir, `${currentChannelId}.m3u8`)
     ]);
 
     currentFFmpegProcess.stdout.on('data', (data) => {
@@ -64,29 +72,30 @@ async function startFFmpeg(nextChannel) {
     currentFFmpegProcess.on('close', (code) => {
         console.log(`FFmpeg process terminated with code: ${code}`);
         currentFFmpegProcess = null;
-        // code null = killed by SIGTERM (intentional stop); skip restart
-        if (code !== null) {
-            console.log(`FFmpeg crashed (code ${code}), restarting in 2s...`);
-            setTimeout(() => startFFmpeg(nextChannel), 2000);
+        if (intentionallyStopped) {
+            return;
         }
+        console.log(`FFmpeg crashed (code ${code}), restarting in 2s...`);
+        setTimeout(() => startFFmpeg(nextChannel), 2000);
     });
 }
 
 function stopFFmpeg() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         if (currentFFmpegProcess) {
             console.log('Gracefully terminate ffmpeg-Process...');
-            
-            currentFFmpegProcess.on('close', (code) => {
+            intentionallyStopped = true;
+
+            currentFFmpegProcess.once('close', (code) => {
                 console.log(`ffmpeg-Process terminated with code: ${code}`);
                 currentFFmpegProcess = null;
-                resolve(); 
+                resolve();
             });
 
             currentFFmpegProcess.kill('SIGTERM');
         } else {
             console.log('No ffmpeg process is running.');
-            resolve(); 
+            resolve();
         }
     });
 }
