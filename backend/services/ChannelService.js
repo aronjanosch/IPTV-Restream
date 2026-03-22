@@ -124,7 +124,9 @@ class ChannelService {
         const [deletedChannel] = this.channels.splice(channelIndex, 1);
 
         if (this.currentChannel.id === id) {
-            await this.setCurrentChannel(0);
+            const next = this.channels[0];
+            if (next) await this.setCurrentChannel(next.id);
+            else this.currentChannel = null;
         }
 
         if (save) ChannelStorage.save(this.channels);

@@ -5,6 +5,33 @@ const { clear } = require('console');
 
 const storageFilePath = path.resolve('/channels/channels.json');
 
+// One-time migration: channels that stored raw M3U content in the playlist field
+// are updated to use a file path reference instead, shrinking channels.json dramatically.
+function migrateRawPlaylistContent(channels) {
+    const contentByName = new Map();
+    for (const channel of channels) {
+        if (channel.playlist && channel.playlist.startsWith('#EXTM3U') && !contentByName.has(channel.playlistName)) {
+            contentByName.set(channel.playlistName, channel.playlist);
+        }
+    }
+    if (contentByName.size === 0) return false;
+
+    for (const [playlistName, content] of contentByName) {
+        const filePath = `/channels/${playlistName}.txt`;
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, content, { encoding: 'utf-8' });
+            console.log(`[migration] Saved playlist "${playlistName}" -> ${filePath}`);
+        }
+        for (const channel of channels) {
+            if (channel.playlistName === playlistName && channel.playlist && channel.playlist.startsWith('#EXTM3U')) {
+                channel.playlist = filePath;
+            }
+        }
+    }
+    console.log(`[migration] Replaced raw M3U content in ${contentByName.size} playlist(s).`);
+    return true;
+}
+
 module.exports = {
     load() {
 
@@ -53,7 +80,9 @@ module.exports = {
                 const data = fs.readFileSync(storageFilePath, 'utf-8');
                 const channelsJson = JSON.parse(data);
 
-                return channelsJson.map(channelJson => Channel.from(channelJson));
+                const channels = channelsJson.map(channelJson => Channel.from(channelJson));
+                if (migrateRawPlaylistContent(channels)) this.save(channels);
+                return channels;
             } catch (err) {
                 console.error('Error loading data from storage:', err);
                 return defaultChannels;
@@ -64,12 +93,14 @@ module.exports = {
     },
 
     save(data) {
-        try {
-            fs.writeFile(storageFilePath, JSON.stringify(data, null, 2), { encoding: 'utf-8' }, (err) => err && console.error(err));
-            console.log('Data saved successfully.');
-        } catch (err) {
-            console.error('Error saving data to storage:', err);
-        }
+        clearTimeout(this._saveTimer);
+        const snapshot = JSON.stringify(data, null, 2);
+        this._saveTimer = setTimeout(() => {
+            fs.writeFile(storageFilePath, snapshot, { encoding: 'utf-8' }, (err) => {
+                if (err) console.error('Error saving data to storage:', err);
+                else console.log('Data saved successfully.');
+            });
+        }, 300);
     },
 
     clear() {

@@ -166,6 +166,7 @@ async function startServer() {
   });
 
   const io = new Server(server, {
+    maxHttpBufferSize: 50 * 1024 * 1024, // 50MB for large M3U playlist uploads
     cors: {
       origin: '*',
       methods: ['GET', 'POST', 'OPTIONS'],

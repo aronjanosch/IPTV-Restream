@@ -8,18 +8,25 @@ class PlaylistService {
 
         console.log('Adding playlist', playlist);
 
+        const fs = require('fs');
         let content = "";
         if(playlist.startsWith("http")) {
             const response = await fetch(playlist);
             content = await response.text();
+        } else if(playlist.startsWith('/channels/')) {
+            // File path reference — read from disk (used by auto-updater)
+            content = fs.readFileSync(playlist, { encoding: 'utf-8' });
         } else {
+            // Raw M3U content — save to disk and use
             content = playlist;
-            const fs = require('fs');
-            fs.writeFileSync(`/channels/${playlistName}.txt`, playlist, { encoding: 'utf-8' }, (err) => err && console.error(err));
-            console.log('Adding playlist to playlist.m3u8');
+            fs.writeFileSync(`/channels/${playlistName}.txt`, playlist, { encoding: 'utf-8' });
+            console.log('Saved uploaded playlist to disk');
         }
 
         const parsedPlaylist = m3uParser.parse(content);
+
+        // Use URL as identifier for remote playlists, file path for uploaded content
+        const playlistRef = playlist.startsWith("http") ? playlist : `/channels/${playlistName}.txt`;
 
         // list of added channels
         const channels = parsedPlaylist.items.map(channel => {
@@ -32,7 +39,7 @@ class PlaylistService {
                     mode: mode,
                     headersJson: headersJson,
                     group: channel.group.title,
-                    playlist: playlist,
+                    playlist: playlistRef,
                     playlistName: playlistName,
                     playlistUpdate: playlistUpdate
                 }, false);

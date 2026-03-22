@@ -53,6 +53,11 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
         setPlaylistUrl(channel.playlist);
         setPlaylistText('');
         setPlaylistFileName('');
+      } else if(channel.playlist.startsWith('/channels/')) {
+        setInputMethod('file');
+        setPlaylistUrl('');
+        setPlaylistText('');
+        setPlaylistFileName(channel.playlist.split('/').pop() || '');
       } else {
         setInputMethod('text');
         setPlaylistUrl('');
@@ -194,7 +199,7 @@ function ChannelModal({ onClose, channel, isAdmin = false }: ChannelModalProps) 
         headers: headers,
       }, isAdmin);
     } else if (type === 'playlist') {
-      const newPlaylist = inputMethod === 'url' ? playlistUrl.trim() : playlistText.trim();
+      const newPlaylist = inputMethod === 'url' ? playlistUrl.trim() : inputMethod === 'file' ? channel!.playlist : playlistText.trim();
       socketService.updatePlaylist(channel!.playlist, {
         playlist: newPlaylist,
         playlistName: playlistName.trim(),

@@ -11,10 +11,8 @@ async function handleAddPlaylist({ playlist, playlistName, mode, playlistUpdate,
 
         const channels = await PlaylistService.addPlaylist(playlist, playlistName, mode, playlistUpdate, headers);
 
-        if (channels) {
-            channels.forEach(channel => {
-                io.emit('channel-added', channel);
-            });
+        if (channels && channels.length > 0) {
+            io.emit('channels-added', channels);
         }
 
         if(playlistUpdate) {

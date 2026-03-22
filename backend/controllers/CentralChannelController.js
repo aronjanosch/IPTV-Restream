@@ -116,14 +116,11 @@ ${backendBaseUrl}/proxy/current \n`;
 
         const channels = ChannelService.getChannels();
         for (const channel of channels) {
-            let restreamMode = undefined;
-            if (channel.restream()) {
-                restreamMode = channel.headers && channel.headers.length > 0 ? 'proxy' : 'direct';
-            }
+            if (channel.restream()) continue;
 
             playlistStr += `\n#EXTINF:-1 tvg-name="${channel.name}" tvg-logo="${channel.avatar}" group-title="${channel.group ?? ''}",${channel.name} \n`;
 
-            if (channel.mode === 'direct' || restreamMode === 'direct') {
+            if (channel.mode === 'direct') {
                 playlistStr += channel.url;
             } else {
                 let headers = undefined;
