@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { Search, Plus, Settings, Users, Radio, Tv2, ChevronDown, Shield, User } from 'lucide-react';
+import { Search, Settings, Users, Radio, Tv2, Shield, User } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
-import ChannelList from './components/ChannelList';
+import ChannelBrowser from './components/ChannelBrowser';
 import Chat from './components/chat/Chat';
 import ChannelModal from './components/add_channel/ChannelModal';
 import { Channel } from './types';
@@ -41,8 +41,6 @@ function AppMain() {
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('All Channels');
   const [selectedGroup, setSelectedGroup] = useState<string>('Category');
-  const [isPlaylistDropdownOpen, setIsPlaylistDropdownOpen] = useState(false);
-  const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
   const { isAdmin, username } = useAdmin();
   const { addToast } = useContext(ToastContext);
@@ -96,6 +94,10 @@ function AppMain() {
       setChannels((prevChannels) => [...prevChannels, channel]);
     };
 
+    const channelsAddedListener = (newChannels: Channel[]) => {
+      setChannels((prevChannels) => [...prevChannels, ...newChannels]);
+    };
+
     const channelSelectedListener = (nextChannel: Channel) => {
       setSelectedChannel(nextChannel);
     };
@@ -144,6 +146,7 @@ function AppMain() {
     };
 
     socketService.subscribeToEvent('channel-added', channelAddedListener);
+    socketService.subscribeToEvent('channels-added', channelsAddedListener);
     socketService.subscribeToEvent('channel-selected', channelSelectedListener);
     socketService.subscribeToEvent('channel-updated', channelUpdatedListener);
     socketService.subscribeToEvent('channel-deleted', channelDeletedListener);
@@ -153,6 +156,7 @@ function AppMain() {
 
     return () => {
       socketService.unsubscribeFromEvent('channel-added', channelAddedListener);
+      socketService.unsubscribeFromEvent('channels-added', channelsAddedListener);
       socketService.unsubscribeFromEvent(
         'channel-selected',
         channelSelectedListener
@@ -233,123 +237,25 @@ function AppMain() {
 
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 lg:col-span-8 space-y-4">
-            <div className="bg-gray-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setIsPlaylistDropdownOpen(!isPlaylistDropdownOpen);
-                        setIsGroupDropdownOpen(false);
-                      }}
-                      className="flex items-center space-x-2 group"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Tv2 className="w-5 h-5 text-blue-500" />
-                        <h2 className="text-xl font-semibold group-hover:text-blue-400 transition-colors">
-                          {selectedPlaylist}
-                        </h2>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isPlaylistDropdownOpen ?
-                        "rotate-180" : ""}`} />
-                    </button>
-
-                    {isPlaylistDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 overflow-hidden">
-                        <div className="max-h-72 overflow-y-auto scroll-container">
-                          {playlists.map((playlist) => (
-                            <button
-                              key={playlist}
-                              onClick={() => {
-                                setSelectedPlaylist(playlist);
-                                setSelectedGroup('Category');
-                                setIsPlaylistDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${selectedPlaylist === playlist ?
-                                "text-blue-400 text-base font-semibold" : "text-gray-200"}`}
-                              style={{
-                                whiteSpace: 'normal',
-                                wordWrap: 'break-word',
-                                overflowWrap: 'anywhere',
-                              }}
-                            >
-                              {playlist}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Group Dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setIsGroupDropdownOpen(!isGroupDropdownOpen);
-                        setIsPlaylistDropdownOpen(false);
-                      }}
-                      className="flex items-center space-x-2 group py-0.5 px-1.5 rounded-lg transition-all bg-white bg-opacity-10"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-base text-gray-300 group-hover:text-blue-400 transition-colors">
-                          {selectedGroup}
-                        </h4>
-                      </div>
-                      <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isGroupDropdownOpen ?
-                        "rotate-180" : ""}`} />
-                    </button>
-
-                    {isGroupDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 overflow-hidden">
-                        <div className="max-h-72 overflow-y-auto scroll-container">
-                          {groups.map((group) => (
-                            <button
-                              key={group}
-                              onClick={() => {
-                                setSelectedGroup(group);
-                                setIsGroupDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-700 ${selectedGroup === group ?
-                                "text-blue-400 text-base font-semibold" : "text-gray-200"}`}
-                              style={{
-                                whiteSpace: 'normal',
-                                wordWrap: 'break-word',
-                                overflowWrap: 'anywhere',
-                              }}
-                            >
-                              {group === 'Category' ? 'All Categories' : group}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      setIsModalOpen(true);
-                      setIsGroupDropdownOpen(false);
-                      setIsPlaylistDropdownOpen(false);
-                    }}
-                    className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-
-              <ChannelList
-                channels={filteredChannels}
-                selectedChannel={selectedChannel}
-                setSearchQuery={setSearchQuery}
-                onEditChannel={handleEditChannel}
-                isAdmin={isAdmin}
-              />
-            </div>
-
             <VideoPlayer channel={selectedChannel} syncEnabled={syncEnabled} />
+
+            <ChannelBrowser
+              channels={filteredChannels}
+              selectedChannel={selectedChannel}
+              setSearchQuery={setSearchQuery}
+              onEditChannel={handleEditChannel}
+              isAdmin={isAdmin}
+              playlists={playlists}
+              groups={groups}
+              selectedPlaylist={selectedPlaylist}
+              selectedGroup={selectedGroup}
+              onPlaylistChange={(playlist) => {
+                setSelectedPlaylist(playlist);
+                setSelectedGroup('Category');
+              }}
+              onGroupChange={setSelectedGroup}
+              onAddChannel={() => setIsModalOpen(true)}
+            />
           </div>
 
           <div className="col-span-12 lg:col-span-4">
