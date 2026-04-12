@@ -23,6 +23,8 @@ const { seedAdminUser } = require('./database');
 const basicAuth = require('./middleware/basicAuth');
 const requireStreamAuth = require('./middleware/requireStreamAuth');
 
+const HttpViewerService = require('./services/HttpViewerService');
+
 dotenv.config();
 
 const app = express();
@@ -176,6 +178,8 @@ async function startServer() {
   });
 
   io.use(socketAuthMiddleware);
+
+  HttpViewerService.init(io);
 
   const connectedUsers = {};
 

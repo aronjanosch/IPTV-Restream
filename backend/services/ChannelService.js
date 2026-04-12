@@ -57,6 +57,7 @@ class ChannelService {
             throw new Error('Channel does not exist');
         }
 
+        let streamStarted = false;
         if (this.currentChannel !== nextChannel) {
             if (nextChannel.restream()) {
                 streamController.stop(this.currentChannel);
@@ -66,6 +67,7 @@ class ChannelService {
                 if (this.activeViewers > 0) {
                     await streamController.start(nextChannel);
                     this.streamActive = true;
+                    streamStarted = true;
                 } else {
                     console.log('No active viewers. Stream will start when viewers connect.');
                     this.streamActive = false;
@@ -76,7 +78,7 @@ class ChannelService {
             }
             this.currentChannel = nextChannel;
         }
-        return nextChannel;
+        return { channel: nextChannel, streamStarted };
     }
 
     async viewerConnected() {

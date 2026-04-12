@@ -18,8 +18,15 @@ module.exports = (io, socket) => {
 
     socket.on('set-current-channel', async (id) => {
         try {
-            const nextChannel = await ChannelService.setCurrentChannel(id);
+            const { channel: nextChannel, streamStarted } = await ChannelService.setCurrentChannel(id);
             io.emit('channel-selected', nextChannel);
+
+            if (streamStarted) {
+                io.emit('stream-status-changed', {
+                    status: 'started',
+                    channelId: nextChannel.id,
+                });
+            }
 
             const username = socket.user?.username || 'Unknown';
             const chatMessage = ChatService.addMessage(

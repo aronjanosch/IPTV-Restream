@@ -17,6 +17,11 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
   const [streamPaused, setStreamPaused] = useState(false);
   const { addToast, removeToast, clearToasts, editToast } = useContext(ToastContext);
 
+  // Reset paused state whenever the channel changes
+  useEffect(() => {
+    setStreamPaused(false);
+  }, [channel?.id]);
+
   // Listen for stream status changes
   useEffect(() => {
     const handleStreamStatusChange = (data: { status: string, channelId: number }) => {
