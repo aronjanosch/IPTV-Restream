@@ -3,6 +3,8 @@ const { Issuer } = require('openid-client');
 let oidcClient = null;
 
 async function initOidcClient() {
+  if (oidcClient) return oidcClient;
+
   const issuerUrl = process.env.OIDC_ISSUER_URL;
   const clientId = process.env.OIDC_CLIENT_ID;
   const clientSecret = process.env.OIDC_CLIENT_SECRET;

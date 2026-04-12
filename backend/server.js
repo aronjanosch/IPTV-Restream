@@ -18,7 +18,6 @@ const authController = require('./controllers/AuthController');
 const userController = require('./controllers/UserController');
 const ChannelService = require('./services/ChannelService');
 const PlaylistUpdater = require('./services/PlaylistUpdater');
-const { initOidcClient } = require('./services/OidcService');
 const { seedAdminUser } = require('./database');
 const basicAuth = require('./middleware/basicAuth');
 const requireStreamAuth = require('./middleware/requireStreamAuth');
@@ -152,14 +151,8 @@ async function startServer() {
   // Seed admin user from env vars on first boot
   await seedAdminUser();
 
-  // Initialize OIDC client if configured
-  if (process.env.OIDC_ISSUER_URL) {
-    try {
-      await initOidcClient();
-    } catch (err) {
-      console.warn('OIDC init failed (continuing without OIDC):', err.message);
-    }
-  }
+  // OIDC client is initialized lazily on first /api/auth/login or callback (avoids
+  // startup races when outbound networking, e.g. VPN sidecar, is not ready yet).
 
   const server = app.listen(PORT, () => {
     console.log(`Server listening on Port ${PORT}`);

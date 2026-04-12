@@ -51,7 +51,7 @@ docker compose build --no-cache  # Rebuild containers
 Optional stacks route **outbound** IPTV traffic through a VPN while keeping the default `docker-compose.yml` free of provider-specific settings.
 
 - **`docker-compose.airvpn.yml`** — AirVPN WireGuard (`VPN_SERVICE_PROVIDER=airvpn`). Set `AIRVPN_*` vars in `.env` (see `.env.example`). Use IPv4-only `AIRVPN_WIREGUARD_ADDRESSES` unless Docker IPv6 is enabled.
-- **`docker-compose.protonvpn.yml`** — ProtonVPN WireGuard. Set `PROTON_WIREGUARD_PRIVATE_KEY` and optional `PROTON_SERVER_COUNTRIES` in `.env`.
+- **`docker-compose.protonvpn.yml`** — Proton WireGuard via gluetun `custom` provider: set `PROTON_WIREGUARD_*` from a downloaded Proton `.conf` (private key, peer public key, `Address`, `Endpoint` IP/port) so you can pin a specific server (see `.env.example`).
 
 Both files use Compose `name: iptv-restream` so `db_data` / `streams_data` are shared when you switch stacks. Run only one VPN stack at a time (port `5000`).
 

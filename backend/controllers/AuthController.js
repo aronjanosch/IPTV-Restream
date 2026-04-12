@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { generators } = require('openid-client');
 const jwt = require('jsonwebtoken');
-const { getOidcClient } = require('../services/OidcService');
+const { initOidcClient, getOidcClient } = require('../services/OidcService');
 const UserService = require('../services/UserService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -55,8 +55,15 @@ module.exports = {
   },
 
   // GET /api/auth/login — initiate OIDC authorization code + PKCE flow
-  initiateLogin(req, res) {
+  async initiateLogin(req, res) {
     try {
+      if (!process.env.OIDC_ISSUER_URL) {
+        return res.status(503).json({
+          success: false,
+          message: 'OIDC is not enabled (set OIDC_ISSUER_URL and related env vars).',
+        });
+      }
+      await initOidcClient();
       const client = getOidcClient();
       const state = generators.state();
       const codeVerifier = generators.codeVerifier();
@@ -74,8 +81,11 @@ module.exports = {
 
       return res.redirect(authorizationUrl);
     } catch (err) {
-      console.error('OIDC login initiation failed:', err.message);
-      return res.status(500).json({ success: false, message: 'OIDC not configured.' });
+      console.error('OIDC login initiation failed:', err);
+      return res.status(503).json({
+        success: false,
+        message: err.message || 'OIDC unavailable (provider discovery or configuration failed).',
+      });
     }
   },
 
@@ -84,6 +94,7 @@ module.exports = {
     const frontendUrl = process.env.OIDC_FRONTEND_URL || 'http://localhost:3000';
 
     try {
+      await initOidcClient();
       const client = getOidcClient();
       const params = client.callbackParams(req);
       const tokenSet = await client.callback(process.env.OIDC_REDIRECT_URI, params, {
