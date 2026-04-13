@@ -144,10 +144,8 @@ proxyRouter.get('/key', proxyController.key);
 proxyRouter.get('/current', requireStreamAuth, centralChannelController.currentChannel);
 app.use('/proxy', proxyRouter);
 
-// Token-in-path HLS segment routes for IPTV apps
-const tokenStreamsRouter = express.Router({ mergeParams: true });
-tokenStreamsRouter.get('/:channelId/:filename', streamFileHandler);
-app.use('/streams/:username/:token', streamTokenAuth, tokenStreamsRouter);
+// Token-in-path HLS segment routes for IPTV apps (explicit 4-segment path avoids conflict with /:channelId/:filename)
+app.get('/streams/:username/:token/:channelId/:filename', streamTokenAuth, streamFileHandler);
 
 // HLS segment files — Basic Auth via user credentials (web app)
 const streamsRouter = express.Router();
