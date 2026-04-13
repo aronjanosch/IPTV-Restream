@@ -8,7 +8,7 @@ const fs = require('fs');
 const STORAGE_PATH = process.env.STORAGE_PATH;
 const BACKEND_URL = process.env.BACKEND_URL;
 
-async function fetchM3u8(res, targetUrl, headers) {
+async function fetchM3u8(res, targetUrl, headers, proxyBaseUrl = '/proxy/') {
     console.log('Proxy playlist request to:', targetUrl);
 
     try {
@@ -25,14 +25,13 @@ async function fetchM3u8(res, targetUrl, headers) {
         const body = await response.text();
 
         try {
-            const proxyBaseUrl = '/proxy/';
             const rewrittenBody = ProxyHelperService.rewriteUrls(body, proxyBaseUrl, headers, targetUrl).join('\n');
 
             if (rewrittenBody.indexOf('channel?url=') !== -1) {
                 const regex = /channel\?url=([^&\s]+)/;
                 const match = rewrittenBody.match(regex);
                 const channelUrl = decodeURIComponent(match[1]);
-                return fetchM3u8(res, channelUrl, headers);
+                return fetchM3u8(res, channelUrl, headers, proxyBaseUrl);
             }
 
             const updatedM3u8 = rewrittenBody.replace(/(#EXTINF.*)/, '#EXT-X-DISCONTINUITY\n$1');
@@ -57,6 +56,14 @@ module.exports = {
 
         const channel = ChannelService.getCurrentChannel();
 
+        const authUser = req.streamAuthUser || req.basicAuthUser;
+        const authPath = req.streamAuthUser
+            ? `/${req.params.username}/${req.params.token}`
+            : '';
+        const proxyBaseUrl = req.streamAuthUser
+            ? `/proxy/${req.params.username}/${req.params.token}/`
+            : '/proxy/';
+
         res.set('Access-Control-Allow-Origin', '*');
         if (channel.restream()) {
             const path = Path.resolve(`${STORAGE_PATH}${channel.id}/${channel.id}.m3u8`);
@@ -74,9 +81,9 @@ module.exports = {
                             }
 
                             if (line.endsWith('.ts')) {
-                                if (req.basicAuthUser) {
+                                if (authUser) {
                                     const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-                                    return `${backendUrl}/streams/${channel.id}/${line}`;
+                                    return `${backendUrl}/streams${authPath}/${channel.id}/${line}`;
                                 }
                                 return `${STORAGE_PATH}${channel.id}/${line}`;
                             }
@@ -101,7 +108,7 @@ module.exports = {
                 headers = Buffer.from(JSON.stringify(channel.headers)).toString('base64');
             }
 
-            fetchM3u8(res, targetUrl, headers);
+            fetchM3u8(res, targetUrl, headers, proxyBaseUrl);
         }
     },
 
@@ -110,15 +117,19 @@ module.exports = {
             ? BACKEND_URL
             : `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.get('Host')}:${req.headers['x-forwarded-port'] ?? ''}`;
 
+        const authPath = req.streamAuthUser
+            ? `/${req.params.username}/${req.params.token}`
+            : '';
+
         let playlistStr = `#EXTM3U
 #EXTINF:-1 tvg-name="CURRENT RESTREAM" tvg-logo="https://cdn-icons-png.freepik.com/512/9294/9294560.png" group-title="StreamHub",CURRENT RESTREAM
-${backendBaseUrl}/proxy/current \n`;
+${backendBaseUrl}/proxy${authPath}/current\n`;
 
         const channels = ChannelService.getChannels();
         for (const channel of channels) {
             if (channel.restream()) continue;
 
-            playlistStr += `\n#EXTINF:-1 tvg-name="${channel.name}" tvg-logo="${channel.avatar}" group-title="${channel.group ?? ''}",${channel.name} \n`;
+            playlistStr += `\n#EXTINF:-1 tvg-name="${channel.name}" tvg-logo="${channel.avatar}" group-title="${channel.group ?? ''}",${channel.name}\n`;
 
             if (channel.mode === 'direct') {
                 playlistStr += channel.url;
@@ -127,7 +138,7 @@ ${backendBaseUrl}/proxy/current \n`;
                 if (channel.headers && channel.headers.length > 0) {
                     headers = Buffer.from(JSON.stringify(channel.headers)).toString('base64');
                 }
-                playlistStr += `${backendBaseUrl}/proxy/channel?url=${encodeURIComponent(channel.url)}${headers ? `&headers=${headers}` : ''} \n`;
+                playlistStr += `${backendBaseUrl}/proxy${authPath}/channel?url=${encodeURIComponent(channel.url)}${headers ? `&headers=${headers}` : ''}\n`;
             }
         }
 

@@ -21,6 +21,7 @@ const PlaylistUpdater = require('./services/PlaylistUpdater');
 const { seedAdminUser } = require('./database');
 const basicAuth = require('./middleware/basicAuth');
 const requireStreamAuth = require('./middleware/requireStreamAuth');
+const streamTokenAuth = require('./middleware/streamTokenAuth');
 
 const HttpViewerService = require('./services/HttpViewerService');
 
@@ -66,6 +67,7 @@ authRouter.post('/login', loginRateLimit, authController.login);
 authRouter.get('/login', authController.initiateLogin);
 authRouter.get('/callback', authController.handleCallback);
 authRouter.get('/me', authController.verifyToken, authController.me);
+authRouter.get('/stream-token', authController.verifyToken, authController.streamToken);
 authRouter.get('/config', authController.config);
 app.use('/api/auth', authRouter);
 
@@ -82,6 +84,7 @@ app.use('/api/users', usersRouter);
 const apiRouter = express.Router();
 apiRouter.get('/', channelController.getChannels);
 apiRouter.get('/current', channelController.getCurrentChannel);
+apiRouter.get('/playlist/:username/:token', streamTokenAuth, centralChannelController.playlist);
 apiRouter.get('/playlist', centralChannelController.playlist);
 apiRouter.get('/:channelId', channelController.getChannel);
 apiRouter.delete('/clear', authController.verifyToken, userController.requireAdmin, channelController.clearChannels);
@@ -93,19 +96,8 @@ app.use('/api/channels', apiRouter);
 // Serve compiled frontend from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Proxy routes — Basic Auth via user credentials
-const proxyRouter = express.Router();
-proxyRouter.use(basicAuth);
-proxyRouter.get('/channel', proxyController.channel);
-proxyRouter.get('/segment', proxyController.segment);
-proxyRouter.get('/key', proxyController.key);
-proxyRouter.get('/current', requireStreamAuth, centralChannelController.currentChannel);
-app.use('/proxy', proxyRouter);
-
-// HLS segment files — Basic Auth via user credentials
-const streamsRouter = express.Router();
-streamsRouter.use(basicAuth);
-streamsRouter.get('/:channelId/:filename', (req, res) => {
+// Shared handler for HLS segment file serving
+function streamFileHandler(req, res) {
   const { channelId, filename } = req.params;
   const storagePath = process.env.STORAGE_PATH || '/streams/';
   const filePath = path.join(storagePath, channelId, filename);
@@ -133,7 +125,34 @@ streamsRouter.get('/:channelId/:filename', (req, res) => {
     console.error('Stream error:', err);
     if (!res.headersSent) res.status(500).json({ error: 'Stream error' });
   });
-});
+}
+
+// Token-in-path proxy routes for IPTV apps (must be registered before /proxy basic-auth routes)
+const tokenProxyRouter = express.Router({ mergeParams: true });
+tokenProxyRouter.get('/channel', proxyController.channel);
+tokenProxyRouter.get('/segment', proxyController.segment);
+tokenProxyRouter.get('/key', proxyController.key);
+tokenProxyRouter.get('/current', centralChannelController.currentChannel);
+app.use('/proxy/:username/:token', streamTokenAuth, tokenProxyRouter);
+
+// Proxy routes — Basic Auth via user credentials (web app)
+const proxyRouter = express.Router();
+proxyRouter.use(basicAuth);
+proxyRouter.get('/channel', proxyController.channel);
+proxyRouter.get('/segment', proxyController.segment);
+proxyRouter.get('/key', proxyController.key);
+proxyRouter.get('/current', requireStreamAuth, centralChannelController.currentChannel);
+app.use('/proxy', proxyRouter);
+
+// Token-in-path HLS segment routes for IPTV apps
+const tokenStreamsRouter = express.Router({ mergeParams: true });
+tokenStreamsRouter.get('/:channelId/:filename', streamFileHandler);
+app.use('/streams/:username/:token', streamTokenAuth, tokenStreamsRouter);
+
+// HLS segment files — Basic Auth via user credentials (web app)
+const streamsRouter = express.Router();
+streamsRouter.use(basicAuth);
+streamsRouter.get('/:channelId/:filename', streamFileHandler);
 app.use('/streams', streamsRouter);
 
 // SPA fallback

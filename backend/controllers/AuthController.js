@@ -3,6 +3,7 @@ const { generators } = require('openid-client');
 const jwt = require('jsonwebtoken');
 const { initOidcClient, getOidcClient } = require('../services/OidcService');
 const UserService = require('../services/UserService');
+const StreamTokenService = require('../services/StreamTokenService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required.');
@@ -140,6 +141,13 @@ module.exports = {
     const user = UserService.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
     res.json(user);
+  },
+
+  // GET /api/auth/stream-token — returns the stream token for the current user
+  streamToken(req, res) {
+    const { username } = req.user;
+    const token = StreamTokenService.generate(username);
+    res.json({ token });
   },
 
   // GET /api/auth/config — tells the frontend which login methods are available

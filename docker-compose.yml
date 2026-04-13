@@ -27,6 +27,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
       STREAM_PASSWORD: ${STREAM_PASSWORD}
+      STREAM_TOKEN_SECRET: ${STREAM_TOKEN_SECRET}
       TZ: ${TZ}
       BACKEND_URL: ${BACKEND_URL}
       # Optional: OIDC / SSO (e.g. Authentik, Keycloak)

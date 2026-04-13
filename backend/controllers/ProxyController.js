@@ -2,10 +2,12 @@ const { Readable } = require('stream');
 const ChannelService = require('../services/ChannelService');
 const ProxyHelperService = require('../services/proxy/ProxyHelperService');
 
-const proxyBaseUrl = '/proxy/';
-
 module.exports = {
     async channel(req, res) {
+        const proxyBaseUrl = req.streamAuthUser
+            ? `/proxy/${req.params.username}/${req.params.token}/`
+            : '/proxy/';
+
         let { url: targetUrl, channelId, headers } = req.query;
 
         if (!targetUrl) {
@@ -43,7 +45,7 @@ module.exports = {
             if (response.status >= 300) {
                 const location = response.headers.get('location');
                 const absoluteUrl = new URL(location, targetUrl).href;
-                const proxyRedirect = `channel/?url=${encodeURIComponent(absoluteUrl)}${headers ? `&headers=${headers}` : ''}`;
+                const proxyRedirect = `${proxyBaseUrl}channel?url=${encodeURIComponent(absoluteUrl)}${headers ? `&headers=${headers}` : ''}`;
                 return res.redirect(response.status, proxyRedirect);
             }
 
