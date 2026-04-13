@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Channel } from '../types';
 import socketService from '../services/SocketService';
-import { Plus, Tv2, ChevronDown } from 'lucide-react';
+import { Plus, Tv2, ChevronDown, Search } from 'lucide-react';
 
 interface ChannelBrowserProps {
   channels: Channel[];
   selectedChannel: Channel | null;
+  searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
   onEditChannel: (channel: Channel) => void;
   isAdmin?: boolean;
@@ -21,6 +22,7 @@ interface ChannelBrowserProps {
 function ChannelBrowser({
   channels,
   selectedChannel,
+  searchQuery,
   setSearchQuery,
   onEditChannel,
   isAdmin = false,
@@ -47,6 +49,18 @@ function ChannelBrowser({
 
   return (
     <div className="bg-gray-800 rounded-lg p-4">
+      {/* Search input */}
+      <div className="relative mb-3">
+        <input
+          type="text"
+          placeholder="Search channels..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-gray-700 text-gray-100 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+        />
+        <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+      </div>
+
       {/* Header: playlist dropdown + add button */}
       <div className="flex items-center justify-between mb-3">
         <div className="relative">
@@ -121,7 +135,7 @@ function ChannelBrowser({
       {channels.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-6">No channels found</p>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 overflow-y-auto max-h-72 scroll-container">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2 overflow-y-auto max-h-[calc(100vh-280px)] lg:max-h-72 scroll-container">
           {channels.map((channel) => (
             <button
               key={channel.id}

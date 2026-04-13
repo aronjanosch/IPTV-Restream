@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { Search, Settings, Users, Radio, Tv2, Shield, User } from 'lucide-react';
+import { Settings, Users, Radio, Tv2, Shield, User, LayoutGrid, Menu } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import ChannelBrowser from './components/ChannelBrowser';
 import Chat from './components/chat/Chat';
@@ -38,6 +38,7 @@ function AppMain() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [editChannel, setEditChannel] = useState<Channel | null>(null);
+  const [activeTab, setActiveTab] = useState<'watch' | 'channels' | 'menu'>('channels');
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('All Channels');
   const [selectedGroup, setSelectedGroup] = useState<string>('Category');
@@ -176,37 +177,71 @@ function AppMain() {
   }, []);
 
   const handleEditChannel = (channel: Channel) => {
-    // Only allow editing if admin mode is not enabled or user is admin
     if (isAdmin) {
       setEditChannel(channel);
       setIsModalOpen(true);
     }
   };
 
+  const channelBrowser = (
+    <ChannelBrowser
+      channels={filteredChannels}
+      selectedChannel={selectedChannel}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      onEditChannel={handleEditChannel}
+      isAdmin={isAdmin}
+      playlists={playlists}
+      groups={groups}
+      selectedPlaylist={selectedPlaylist}
+      selectedGroup={selectedGroup}
+      onPlaylistChange={(playlist) => {
+        setSelectedPlaylist(playlist);
+        setSelectedGroup('Category');
+      }}
+      onGroupChange={setSelectedGroup}
+      onAddChannel={() => setIsModalOpen(true)}
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <div className="container mx-auto py-4">
+    <div className="min-h-screen bg-gray-900 text-gray-100 pb-16 lg:pb-0">
+
+      {/* Mobile header */}
+      <header className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-gray-800">
+        <div className="flex items-center space-x-2">
+          <Radio className="w-6 h-6 text-blue-500" />
+          <h1 className="text-lg font-bold">StreamHub</h1>
+          {isAdmin && (
+            <span className="flex items-center px-2 py-0.5 text-xs font-medium text-green-400 bg-green-400 bg-opacity-10 rounded-full border border-green-400">
+              <Shield className="w-3 h-3 mr-1" />
+              Admin
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setIsAdminModalOpen(true)}
+          title={username ?? ''}
+        >
+          {isAdmin
+            ? <Shield className="w-5 h-5 text-green-500" />
+            : <User className="w-5 h-5 text-blue-400" />
+          }
+        </button>
+      </header>
+
+      {/* Desktop header */}
+      <div className="hidden lg:block container mx-auto py-4">
         <header className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <Radio className="w-8 h-8 text-blue-500" />
             <h1 className="text-2xl font-bold">StreamHub</h1>
-
             {isAdmin && (
               <span className="ml-2 flex items-center px-2 py-1 text-xs font-medium text-green-400 bg-green-400 bg-opacity-10 rounded-full border border-green-400">
                 <Shield className="w-3 h-3 mr-1" />
                 Admin
               </span>
             )}
-          </div>
-          <div className="relative max-w-md w-full">
-            <input
-              type="text"
-              placeholder="Search channels..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-800 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
           </div>
           <div className="flex items-center space-x-4">
             <Users className="w-6 h-6 text-blue-500" />
@@ -235,34 +270,99 @@ function AppMain() {
           </div>
         </header>
 
+        {/* Desktop layout */}
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 lg:col-span-8 space-y-4">
             <VideoPlayer channel={selectedChannel} syncEnabled={syncEnabled} />
-
-            <ChannelBrowser
-              channels={filteredChannels}
-              selectedChannel={selectedChannel}
-              setSearchQuery={setSearchQuery}
-              onEditChannel={handleEditChannel}
-              isAdmin={isAdmin}
-              playlists={playlists}
-              groups={groups}
-              selectedPlaylist={selectedPlaylist}
-              selectedGroup={selectedGroup}
-              onPlaylistChange={(playlist) => {
-                setSelectedPlaylist(playlist);
-                setSelectedGroup('Category');
-              }}
-              onGroupChange={setSelectedGroup}
-              onAddChannel={() => setIsModalOpen(true)}
-            />
+            {channelBrowser}
           </div>
-
           <div className="col-span-12 lg:col-span-4">
             <Chat />
           </div>
         </div>
       </div>
+
+      {/* Mobile tab content */}
+      <div className="lg:hidden">
+        {activeTab === 'watch' && (
+          <div className="p-4 space-y-3">
+            <VideoPlayer channel={selectedChannel} syncEnabled={syncEnabled} />
+            {selectedChannel ? (
+              <div className="px-1">
+                <p className="font-semibold">{selectedChannel.name}</p>
+                <p className="text-sm text-gray-400">{selectedChannel.group}</p>
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 text-sm py-4">
+                Select a channel from the Channels tab
+              </p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'channels' && (
+          <div className="p-4">
+            {channelBrowser}
+          </div>
+        )}
+
+        {activeTab === 'menu' && (
+          <div className="p-4 space-y-1">
+            <button
+              onClick={() => setIsTvPlaylistOpen(true)}
+              className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors text-left"
+            >
+              <Tv2 className="w-5 h-5 text-blue-500 shrink-0" />
+              <span>Get Playlist URL</span>
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors text-left"
+            >
+              <Settings className="w-5 h-5 text-blue-500 shrink-0" />
+              <span>Settings</span>
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsAdminModalOpen(true)}
+                className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors text-left"
+              >
+                <Shield className="w-5 h-5 text-green-500 shrink-0" />
+                <span>Admin Panel</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors text-left"
+            >
+              <User className="w-5 h-5 text-blue-400 shrink-0" />
+              <span>{username}</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 flex">
+        {(
+          [
+            { tab: 'watch', icon: Tv2, label: 'Watch' },
+            { tab: 'channels', icon: LayoutGrid, label: 'Channels' },
+            { tab: 'menu', icon: Menu, label: 'Menu' },
+          ] as const
+        ).map(({ tab, icon: Icon, label }) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 flex flex-col items-center py-3 transition-colors ${
+              activeTab === tab ? 'text-blue-500' : 'text-gray-500'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-xs mt-1">{label}</span>
+          </button>
+        ))}
+      </nav>
 
       {isModalOpen && (
         <ChannelModal
