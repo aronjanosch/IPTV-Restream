@@ -85,15 +85,14 @@ class ChannelService {
         this.activeViewers++;
         console.log(`Viewer connected. Active viewers: ${this.activeViewers}`);
 
-        // Start stream if this is the first viewer and we're not already streaming
-        if (this.activeViewers === 1 && this.currentChannel.restream() && !this.streamActive) {
-            console.log('First viewer connected. Starting stream for:', this.currentChannel.name);
+        if (this.currentChannel.restream() && !this.streamActive) {
+            console.log('Viewer connected, starting stream for:', this.currentChannel.name);
             await streamController.start(this.currentChannel);
             this.streamActive = true;
-            return true; // Indicate stream was started
+            return true;
         }
 
-        return false; // No change in stream state
+        return false;
     }
 
     async viewerDisconnected() {
@@ -102,15 +101,21 @@ class ChannelService {
         }
         console.log(`Viewer disconnected. Active viewers: ${this.activeViewers}`);
 
-        // If no more viewers, stop the stream to save resources
         if (this.activeViewers === 0 && this.currentChannel.restream() && this.streamActive) {
             console.log('No active viewers. Stopping stream for:', this.currentChannel.name);
             await streamController.stop(this.currentChannel);
             this.streamActive = false;
-            return true; // Indicate stream was stopped
+            // Viewer may have reconnected while stop was in-flight
+            if (this.activeViewers > 0) {
+                console.log('Viewer reconnected during stop. Restarting stream for:', this.currentChannel.name);
+                await streamController.start(this.currentChannel);
+                this.streamActive = true;
+                return false;
+            }
+            return true;
         }
 
-        return false; // No change in stream state
+        return false;
     }
 
     getCurrentChannel() {
