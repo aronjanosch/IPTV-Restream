@@ -122,6 +122,9 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
       hls.loadSource(sourceLinks[channel.mode]);
       hls.attachMedia(video);
 
+      let mediaErrorRecoveryAttempts = 0;
+      const MAX_MEDIA_ERROR_RECOVERIES = 3;
+
       if(!syncEnabled) return;
 
       clearToasts();
@@ -228,27 +231,52 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          console.error('HLS error:', data);
-
-          if (toastStartId) {
-            removeToast(toastStartId);
-          }
-
-          const messages: Record<ChannelMode, string> = {
-            direct: 'The stream is not working. Try with proxy/restream option enabled for this channel.',
-            proxy: 'The stream is not working. Try with restream option enabled for this channel.',
-            restream: `The stream is not working. Check the source. ${data.response?.text}`,
-          };
-          
-          addToast({
-            type: 'error',
-            title: 'Stream Error',
-            message: messages[channel.mode],
-            duration: 5000,
-          });
+        if (!data.fatal) {
+          // Buffer stalls / timestamp discontinuities from upstream (e.g. a relay
+          // switching CDN edges mid-stream) usually surface here first. HLS.js
+          // retries internally; only fatal errors need explicit recovery below.
+          console.warn('Non-fatal HLS error:', data.details);
           return;
         }
+
+        console.error('Fatal HLS error:', data);
+
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            hls.startLoad();
+            break;
+
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            mediaErrorRecoveryAttempts++;
+            if (mediaErrorRecoveryAttempts <= MAX_MEDIA_ERROR_RECOVERIES) {
+              console.log(`Recovering from media error (attempt ${mediaErrorRecoveryAttempts}/${MAX_MEDIA_ERROR_RECOVERIES})...`);
+              hls.recoverMediaError();
+              return; // don't toast — this is expected to self-heal
+            }
+            console.error('Media error recovery exhausted, giving up.');
+            break;
+
+          default:
+            // Not recoverable via startLoad/recoverMediaError.
+            break;
+        }
+
+        if (toastStartId) {
+          removeToast(toastStartId);
+        }
+
+        const messages: Record<ChannelMode, string> = {
+          direct: 'The stream is not working. Try with proxy/restream option enabled for this channel.',
+          proxy: 'The stream is not working. Try with restream option enabled for this channel.',
+          restream: `The stream is not working. Check the source. ${data.response?.text}`,
+        };
+
+        addToast({
+          type: 'error',
+          title: 'Stream Error',
+          message: messages[channel.mode],
+          duration: 5000,
+        });
       });
     }
 
