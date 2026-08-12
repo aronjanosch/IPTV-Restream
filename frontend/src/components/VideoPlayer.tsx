@@ -141,7 +141,7 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
 
       let toastDurationSet = false;
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, _data) => {
-        if (channel.mode === 'restream') {
+        if (channel.mode === 'restream' && syncEnabled) {
           const now = new Date().getTime();
       
           const fragments = hls.levels[0]?.details?.fragments;
@@ -192,6 +192,7 @@ function VideoPlayer({ channel, syncEnabled }: VideoPlayerProps) {
       
       let timeMissingErrorShown = false;
       hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
+        if (!syncEnabled) return;
 
         const now = new Date().getTime();
         const newFrag = data.frag;
