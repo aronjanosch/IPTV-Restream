@@ -2,6 +2,20 @@ const m3uParser = require('iptv-playlist-parser');
 const ChannelService = require('./ChannelService');
 const ChannelStorage = require('./ChannelStorage');
 
+// m3u-editor (and similar loopback-fetched sources) bakes 127.0.0.1 into logo URLs
+// because it builds them request-aware from whatever host fetched the playlist.
+// Browsers can't reach that loopback address, so route those through our own
+// generic proxy instead (backend can reach it — same netns as m3u-editor).
+function resolveAvatarUrl(rawUrl) {
+    if (!rawUrl) return rawUrl;
+    if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(rawUrl)) return rawUrl;
+
+    const backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) return rawUrl;
+
+    return `${backendUrl.replace(/\/$/, '')}/proxy/segment?url=${encodeURIComponent(rawUrl)}`;
+}
+
 class PlaylistService {
 
     async addPlaylist(playlist, playlistName, mode, playlistUpdate, headersJson) {
@@ -35,7 +49,7 @@ class PlaylistService {
                 return ChannelService.addChannel({
                     name: channel.name,
                     url: channel.url,
-                    avatar: channel.tvg.logo,
+                    avatar: resolveAvatarUrl(channel.tvg.logo),
                     mode: mode,
                     headersJson: headersJson,
                     group: channel.group.title,
