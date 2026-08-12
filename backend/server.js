@@ -24,6 +24,7 @@ const requireStreamAuth = require('./middleware/requireStreamAuth');
 const streamTokenAuth = require('./middleware/streamTokenAuth');
 
 const HttpViewerService = require('./services/HttpViewerService');
+const FFmpegService = require('./services/restream/FFmpegService');
 
 dotenv.config();
 
@@ -190,6 +191,7 @@ async function startServer() {
   io.use(socketAuthMiddleware);
 
   HttpViewerService.init(io);
+  FFmpegService.init(io);
 
   const connectedUsers = {};
 

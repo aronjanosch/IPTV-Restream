@@ -3,12 +3,15 @@ const Channel = require('../models/Channel');
 const storageService = require('./restream/StorageService');
 const ChannelStorage = require('./ChannelStorage');
 
+const STOP_GRACE_MS = 10_000;
+
 class ChannelService {
     constructor() {
         this.channels = ChannelStorage.load();
         this.currentChannel = this.channels[0];
         this.activeViewers = 0;
         this.streamActive = false;
+        this.stopTimer = null;
     }
 
     clearChannels() {
@@ -59,6 +62,11 @@ class ChannelService {
 
         let streamStarted = false;
         if (this.currentChannel !== nextChannel) {
+            if (this.stopTimer) {
+                clearTimeout(this.stopTimer);
+                this.stopTimer = null;
+            }
+
             if (nextChannel.restream()) {
                 streamController.stop(this.currentChannel);
                 storageService.deleteChannelStorage(nextChannel.id);
@@ -85,6 +93,12 @@ class ChannelService {
         this.activeViewers++;
         console.log(`Viewer connected. Active viewers: ${this.activeViewers}`);
 
+        if (this.stopTimer) {
+            console.log('Viewer reconnected during grace period. Cancelling pending stop.');
+            clearTimeout(this.stopTimer);
+            this.stopTimer = null;
+        }
+
         if (this.currentChannel.restream() && !this.streamActive) {
             console.log('Viewer connected, starting stream for:', this.currentChannel.name);
             await streamController.start(this.currentChannel);
@@ -102,17 +116,27 @@ class ChannelService {
         console.log(`Viewer disconnected. Active viewers: ${this.activeViewers}`);
 
         if (this.activeViewers === 0 && this.currentChannel.restream() && this.streamActive) {
-            console.log('No active viewers. Stopping stream for:', this.currentChannel.name);
-            await streamController.stop(this.currentChannel);
-            this.streamActive = false;
-            // Viewer may have reconnected while stop was in-flight
-            if (this.activeViewers > 0) {
-                console.log('Viewer reconnected during stop. Restarting stream for:', this.currentChannel.name);
-                await streamController.start(this.currentChannel);
-                this.streamActive = true;
-                return false;
-            }
-            return true;
+            const channelToStop = this.currentChannel;
+            console.log(`No active viewers. Stopping stream for ${channelToStop.name} in ${STOP_GRACE_MS}ms grace period...`);
+
+            if (this.stopTimer) clearTimeout(this.stopTimer);
+
+            return new Promise((resolve) => {
+                this.stopTimer = setTimeout(async () => {
+                    this.stopTimer = null;
+
+                    if (this.activeViewers > 0 || this.currentChannel !== channelToStop || !this.streamActive) {
+                        console.log('Viewer reconnected or channel changed during grace period. Skipping stop.');
+                        resolve(false);
+                        return;
+                    }
+
+                    console.log('Grace period elapsed. Stopping stream for:', channelToStop.name);
+                    await streamController.stop(channelToStop);
+                    this.streamActive = false;
+                    resolve(true);
+                }, STOP_GRACE_MS);
+            });
         }
 
         return false;

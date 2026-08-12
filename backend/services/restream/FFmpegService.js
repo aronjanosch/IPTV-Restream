@@ -6,13 +6,32 @@ require('dotenv').config();
 let currentFFmpegProcess = null;
 let currentChannelId = null;
 let intentionallyStopped = false;
+let retryCount = 0;
+let retryTimer = null;
+let _io = null;
 const STORAGE_PATH = process.env.STORAGE_PATH;
 
-async function startFFmpeg(nextChannel) {
+const MAX_RETRIES = 6;
+const BASE_RETRY_DELAY_MS = 2000;
+const MAX_RETRY_DELAY_MS = 60000;
+
+function init(io) {
+    _io = io;
+}
+
+async function startFFmpeg(nextChannel, isRetry = false) {
     console.log('Starting FFmpeg process with channel:', nextChannel.id);
     if (currentFFmpegProcess) {
         console.log('Gracefully terminating previous FFmpeg process...');
         await stopFFmpeg();
+    }
+
+    if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+    }
+    if (!isRetry) {
+        retryCount = 0;
     }
 
     intentionallyStopped = false;
@@ -75,13 +94,33 @@ async function startFFmpeg(nextChannel) {
         if (intentionallyStopped) {
             return;
         }
-        console.log(`FFmpeg crashed (code ${code}), restarting in 2s...`);
-        setTimeout(() => startFFmpeg(nextChannel), 2000);
+
+        retryCount++;
+        if (retryCount > MAX_RETRIES) {
+            console.error(`FFmpeg crashed ${retryCount} times for channel ${nextChannel.id}, giving up.`);
+            if (_io) {
+                _io.emit('stream-status-changed', {
+                    status: 'failed',
+                    channelId: nextChannel.id,
+                });
+            }
+            return;
+        }
+
+        const delay = Math.min(BASE_RETRY_DELAY_MS * 2 ** (retryCount - 1), MAX_RETRY_DELAY_MS);
+        console.log(`FFmpeg crashed (code ${code}), restarting in ${delay}ms (attempt ${retryCount}/${MAX_RETRIES})...`);
+        retryTimer = setTimeout(() => startFFmpeg(nextChannel, true), delay);
     });
 }
 
 function stopFFmpeg() {
     return new Promise((resolve) => {
+        if (retryTimer) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+        }
+        retryCount = 0;
+
         if (currentFFmpegProcess) {
             console.log('Gracefully terminate ffmpeg-Process...');
             intentionallyStopped = true;
@@ -105,6 +144,7 @@ function isFFmpegRunning() {
 }
 
 module.exports = {
+    init,
     startFFmpeg,
     stopFFmpeg,
     isFFmpegRunning
